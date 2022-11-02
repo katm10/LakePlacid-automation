@@ -2,9 +2,10 @@ import sys
 import os
 import json
 
-def main():
-  make_txt = sys.argv[1]
+MV_JSON = "mv_info.json"
 
+def generate_mv_json(make_txt, json_path):
+  directory = os.getcwd()
   name_map = {}
   with open(make_txt, 'r') as f:
     lines = f.readlines()
@@ -18,10 +19,12 @@ def main():
           init_path = args[0]
           final_path = args[1]
           name_map[init_path] = final_path
-  
-  with open("name_changes.json", 'w') as f:
-      json.dump(name_map, f)
-  
-if __name__ == "__main__":
-    main()
 
+  dict_obj = {"directory": directory, "file_changes": name_map}
+  
+  with open(json_path, 'w') as f:
+      json.dump(dict_obj, f)
+  
+if __name__ == "__main__":  
+  make_txt = sys.argv[1]
+  generate_mv_json(make_txt, MV_JSON)

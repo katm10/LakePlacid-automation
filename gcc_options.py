@@ -1,6 +1,5 @@
 from enum import Enum
 import os
-from typing import Iterator
 
 GCCStage = Enum("GCCStage", ["PREPROCESS", "COMPILE", "ASSEMBLE", "LINK", "UNSPECIFIED"])
 InputType = Enum("InputType", ["FILE", "DIR", "OTHER", "NONE"])
@@ -39,13 +38,13 @@ GCCOptionInfos = [
   GCCOptionInfo("iwithprefix", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("iwithprefixbefore", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("isystem", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("M", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("MM", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MF", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
+  GCCOptionInfo("MF", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
   GCCOptionInfo("MG", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("MP", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MT", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MQ", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
+  GCCOptionInfo("MT", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
+  GCCOptionInfo("MQ", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
+  GCCOptionInfo("M", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("nostdinc", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("P", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("U", False, True, "", InputType.NONE, GCCStage.PREPROCESS),
@@ -83,42 +82,65 @@ GCCOptionInfos = [
   GCCOptionInfo("I-", False, False, "", InputType.NONE, GCCStage.UNSPECIFIED),
   GCCOptionInfo("L", False, True, " ", InputType.NONE, GCCStage.UNSPECIFIED),
   GCCOptionInfo("specs", False, True, " ", InputType.NONE, GCCStage.UNSPECIFIED)
-]
-
-class GCCTarget: 
-  def __init__(self, target):
-    self.target = target
-    self.abs_target = None
-
-    if os.path.exists(self.target):
-      self.abs_target = os.path.abspath(self.target)
-      if os.path.isdir: 
-        self.input_type = InputType.DIRECTORY
-      else:
-        self.input_type = InputType.FILE
-    else:
-      self.input_type = InputType.OTHER
-  
+]  
 
 class GCCOption:
-  def __init__(self):
-    pass
+  def __init__(self, stage, option, target, target_type, separator):
+    self.stage = stage
+    self.option = option
+    self.target = target
+    self.target_type = target_type
+    self.separator = separator
+
+  def to_dict(self):
+    return {
+      "option": self.option,
+      "target": self.target,
+      "target_type": str(self.target_type),
+      "separator": self.separator
+    }
 
   @staticmethod
   def find_matching_arg(option: str, double_dash: bool) -> GCCOptionInfo:
     for info in GCCOptionInfos:
-      if info.double_dash == double_dash and option.startswith(info):
+      if info.double_dash == double_dash and option.startswith(info.option):
         return info
     return None
 
   @staticmethod
-  def construct(option: str, option_info: GCCOptionInfo, arg_iter: Iterator[str]) -> GCCOption:
+  def construct(option: str, indx: int, args: list):
+    double_dash = False
+    if option.startswith("--"):
+      flag = option[2:]
+      double_dash = True
+    else:
+      flag = option[1:]
+
+    arg = None
+    option_info = GCCOption.find_matching_arg(flag, double_dash)
+    if option_info is None:
+      return GCCOption(
+        GCCStage.UNSPECIFIED,
+        option,
+        None,
+        InputType.NONE,
+        ""
+      ), indx
+    
     if option_info.has_arg:
       if option_info.arg_separator == " ":
-        arg = next(arg_iter)
+        indx += 1
+        arg = args[indx]
+      elif option_info.arg_separator == "":
+        arg_indx = (double_dash and 2 or 1) + len(option_info.option) + len(option_info.arg_separator)
+        arg = option[arg_indx:]
       else:
         arg = option.split(option_info.arg_separator)[1]
-      
-      if option_info.input_type == InputType.FILE or option_info.input_type == InputType.DIR:
-        arg = GCCTarget(arg)
-    return GCCOption()
+
+    return GCCOption(
+      option_info.stage,
+      option, 
+      arg,
+      option_info.input_type,
+      option_info.arg_separator
+    ), indx

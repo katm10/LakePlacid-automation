@@ -26,6 +26,7 @@ class CompilationInfo:
     self.inputs = []
     self.preprocessor_args = []
     self.compiler_args = []
+    self.assembler_args = []
     self.linker_args = []
     self.unspecified_args = []
     self.command = command
@@ -47,6 +48,7 @@ class CompilationInfo:
       "args": {
         "preprocessor": self.preprocessor_args,
         "compiler": self.compiler_args,
+        "assembler": self.assembler_args,
         "linker": self.linker_args,
         "unspecified": self.unspecified_args
       }
@@ -61,6 +63,7 @@ class CompilationInfo:
     self.inputs = json_obj["inputs"]
     self.preprocessor_args = json_obj["args"]["preprocessor"]
     self.compiler_args = json_obj["args"]["compiler"]
+    self.assembler_args = json_obj["args"]["assembler"]
     self.linker_args = json_obj["args"]["linker"]
     self.unspecified_args = json_obj["args"]["unspecified"]
 
@@ -96,24 +99,36 @@ class CompilationInfo:
     return " ".join(self.inputs)
 
   def parse(self):
-    args = iter(self.args)
-    
-    while True:
-      option = arg_iter.next().strip()
+    indx = 0
+    while indx < len(self.args):
+      arg = self.args[indx].strip()
+      if arg[0] == '-':
+        option, indx = gcc_options.GCCOption.construct(arg, indx, self.args)
 
-      double_dash = False
-      is_flag = False
+        if option.option == "-c":
+          self.compile_only = True
+          indx += 1
+          continue
+        elif option.option == "-o":
+          self.output = option.target
+          indx += 1
+          continue
 
-      if option.startswith("--"):
-        option = option[2:]
-        double_dash = True
-        is_flag = True
-      elif option.startswith("-"):
-        option = option[1:]
-        is_flag = True
-      
-      if is_flag:
-        option_info = GCCOption.find_matching_arg(option, double_dash)
-        return GCCOption.construct(option, option_info, arg_iter)
+        if option.stage == gcc_options.GCCStage.PREPROCESS:
+          self.preprocessor_args.append(option.to_dict())
+        elif option.stage == gcc_options.GCCStage.COMPILE:
+          self.compiler_args.append(option.to_dict())
+        elif option.stage == gcc_options.GCCStage.ASSEMBLE:
+          self.assembler_args.append(option.to_dict())
+        elif option.stage == gcc_options.GCCStage.LINK:
+          self.linker_args.append(option.to_dict())
+        else:
+          self.unspecified_args.append(option.to_dict())
+
       else:
-        return GCCTarget(option)
+        self.inputs.append(arg)
+
+      indx += 1
+    
+
+      
