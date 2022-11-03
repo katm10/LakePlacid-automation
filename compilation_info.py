@@ -58,14 +58,14 @@ class CompilationInfo:
 
   def from_json(self, json_obj):
     self.directory = json_obj["directory"]
-    self.compile_only = json_obj["compile-only"]
+    self.command = json_obj["command"]
     self.output = json_obj["output"]
     self.inputs = json_obj["inputs"]
-    self.preprocessor_args = json_obj["args"]["preprocessor"]
-    self.compiler_args = json_obj["args"]["compiler"]
-    self.assembler_args = json_obj["args"]["assembler"]
-    self.linker_args = json_obj["args"]["linker"]
-    self.unspecified_args = json_obj["args"]["unspecified"]
+    self.preprocessor_args = gcc_options.GCCOption.json_to_args(json_obj["args"]["preprocessor"], gcc_options.GCCStage.PREPROCESS)
+    self.compiler_args = gcc_options.GCCOption.json_to_args(json_obj["args"]["compiler"], gcc_options.GCCStage.COMPILE)
+    self.assembler_args = gcc_options.GCCOption.json_to_args(json_obj["args"]["assembler"], gcc_options.GCCStage.ASSEMBLE)
+    self.linker_args = gcc_options.GCCOption.json_to_args(json_obj["args"]["linker"], gcc_options.GCCStage.LINK)
+    self.unspecified_args = gcc_options.GCCOption.json_to_args(json_obj["args"]["unspecified"], gcc_options.GCCStage.UNSPECIFIED)
 
   def update(self, json_file):
     with open(json_file, "r") as f:
@@ -80,22 +80,46 @@ class CompilationInfo:
     with open(json_file, "w") as f:
       json.dump(json_obj, f)
 
-  def get_preprocessor_arg_str(self):
-    return " ".join(self.preprocessor_args)
+  def convert_args(self, init_args, directory):
+    if directory is None:
+      directory = self.directory
 
-  def get_compiler_arg_str(self):
-    return " ".join(self.compiler_args)
+    args = []
+    for arg in init_args:
+      if arg.target is not None:
+        if arg.target_type == gcc_options.InputType.FILE:
+          arg.target = os.path.join(directory, arg.target)
+          dir = os.path.dirname(arg.target)
+          os.makedirs(dir, exist_ok=True) 
+        elif arg.target_type == gcc_options.InputType.DIR:
+          arg.target = os.path.join(directory, arg.target)
+          os.makedirs(arg.target, exist_ok=True)
+
+        if arg.separator == " ":
+          args.extend([arg.option, arg.target])
+        else:
+          args.append(arg.option + arg.separator + arg.target)
+    return args
+
+  def get_preprocessor_args(self, directory = None):
+    return self.convert_args(self.preprocessor_args, directory)
+
+  def get_compiler_args(self, directory = None):
+    return self.convert_args(self.compiler_args, directory)
+
+  def get_assembler_args(self, directory = None):
+    return self.convert_args(self.assembler_args, directory)
   
-  def get_linker_arg_str(self):
-    return " ".join(self.linker_args)
+  def get_linker_args(self, directory = None):
+    return self.convert_args(self.linker_args, directory)
 
-  def get_unspecified_arg_str(self):
-    return " ".join(self.unspecified_args)
+  def get_unspecified_args(self, directory = None):
+    return self.convert_args(self.unspecified_args, directory)
 
-  def get_output(self):
+  def get_output(self, directory = None):
     return self.output
 
-  def get_inputs(self):
+  def get_inputs(self, directory = None):
     return " ".join(self.inputs)
 
   def parse(self):
@@ -122,7 +146,7 @@ class CompilationInfo:
           self.assembler_args.append(option.to_dict())
         elif option.stage == gcc_options.GCCStage.LINK:
           self.linker_args.append(option.to_dict())
-        else:
+        elif option.stage == gcc_options.GCCStage.UNSPECIFIED:
           self.unspecified_args.append(option.to_dict())
 
       else:
