@@ -13,7 +13,7 @@ OUTPUT_DIR = os.path.join(SCOUT_DIR, "output")
 JSON_PATH = os.path.join(BASE_DIR, "compilation_info.json")
 
 def preprocess(input_dir, compile_commands):
-  compiler = "clang" # os.path.join(BASE_DIR, "compilers", "mpns_clang") # TODO: is there anything special about this compiler?
+  compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang" # TODO: seems reasonable to just require clang as a dep?
   input_dir = os.path.abspath(input_dir)
   output_dir = PREPROCESS_DIR
  
@@ -35,7 +35,7 @@ def preprocess(input_dir, compile_commands):
       subprocess.run(command, stdout=f, cwd=output_dir)
 
 def instrument(compile_commands):
-  compiler = "clang" # compiler = os.path.join(BASE_DIR, "compilers", "extract_trace") 
+  compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace"
   input_dir = os.path.join(SCOUT_DIR, PREPROCESS_DIR)
   output_dir = os.path.join(SCOUT_DIR, INSTRUMENT_DIR)
 
@@ -47,39 +47,41 @@ def instrument(compile_commands):
     with open(os.path.join(output_dir, entry.inputs[0]), "w") as f:
       subprocess.run(command, stdout=f)
 
-def compile():
-  compiler = os.path.join(BASE_DIR, "compilers", "mpns_clang") 
+def compile(compile_commands):
+  compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang"
   input_dir = os.path.join(SCOUT_DIR, INSTRUMENT_DIR)
   output_dir = os.path.join(SCOUT_DIR, COMPILE_DIR)
 
   with open(JSON_PATH, "r") as f:
     info = json.load(f)
 
-  for entry in info["compilation"]:
+  for entry in compile_commands:
     command = [compiler]
     command.extend(entry.get_compiler_args())
     command.extend(entry.get_unspecified_args())
     command.extend(["-c", f"{input_dir}/{entry.inputs[0]}", "-fPIC", "-o", f"{output_dir}/{entry.output}"])
-
+    
+    print(command)
     subprocess.run(command)
 
-def link():
-  compiler = "gcc" # TODO: do we need to use gcc?
+def link(linking_commands):
+  compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang" # TODO: do we need to use gcc?
   input_dir = os.path.join(SCOUT_DIR, COMPILE_DIR)
   output_dir = os.path.join(SCOUT_DIR, OUTPUT_DIR)
 
   with open(JSON_PATH, "r") as f:
     info = json.load(f)
 
-  for entry in info["linking"]:
+  for entry in linking_commands:
     command = [compiler]
-    command.extend(entry["args"]["linker"])
-    command.extend(entry["args"]["unspecified"])
-    command.extend(["-o", f"{output_dir}/{entry['output']}"])
-    command.extend([f"{input_dir}/{input}" for input in entry["inputs"]])
-    command.extend(["support/trace_support.c", "-lpthread", "-levent"])
+    command.extend(entry.get_linker_args())
+    command.extend(entry.get_unspecified_args())
+    command.extend(["-o", f"{output_dir}/{entry.output}"])
+    command.extend([f"{input_dir}/{input}" for input in entry.inputs])
+    command.extend([os.path.join(BASE_DIR, "support", "trace_support.c"), "-lpthread", "-levent"])
 
-    subprocess.run(command)
+    subprocess.Popen(command)
+    # print(command)
 
 def main():
   if len(sys.argv) < 2:
@@ -105,10 +107,11 @@ def main():
       link_commands.append(compilation_info)
 
   source_dir = sys.argv[1]
-  preprocess(source_dir, compile_commands)
-  instrument(compile_commands)
-  # compile()
-  # link()
+  # TODO allow command line options to choose which to run
+  # preprocess(source_dir, compile_commands)
+  # instrument(compile_commands)
+  # compile(compile_commands)
+  link(link_commands)
 
 if __name__ == "__main__":
   main()

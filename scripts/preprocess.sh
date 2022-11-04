@@ -7,5 +7,5 @@ CFLAGS="-DHAVE_CONFIG_H -I.. -fprofile-arcs -ftest-coverage -DMEMCACHED_DEBUG -g
 
 for i in $modules; do
         #echo ~/scratch/mpns_clang/build/bin/clang -E $CFLAGS $sp/$i.c 
-        clang -E $CFLAGS $sp/$i.c > $op/$i.c
+        /data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang -E $CFLAGS $sp/$i.c > $op/$i.c
 done
