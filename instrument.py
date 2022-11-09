@@ -4,13 +4,14 @@ import os
 import subprocess
 from compilation_info import CompilationInfo
 
-BASE_DIR = os.path.abspath(os.path.join( os.path.dirname( __file__ ) ))
-SCOUT_DIR = os.path.join(BASE_DIR, "scouting")
+ROOT_DIR="${ROOT_DIR}".strip().rstrip('/')
+LP_DIR="${LP_DIR}".strip().rstrip('/')
+SCOUT_DIR = os.path.join(LP_DIR, "scouting")
 PREPROCESS_DIR = os.path.join(SCOUT_DIR, "preprocessed")
 INSTRUMENT_DIR = os.path.join(SCOUT_DIR, "instrumented")
 COMPILE_DIR = os.path.join(SCOUT_DIR, "compiled")
 OUTPUT_DIR = os.path.join(SCOUT_DIR, "output")
-JSON_PATH = os.path.join(BASE_DIR, "compilation_info.json")
+JSON_PATH = os.path.join(LP_DIR, "compilation_info.json")
 
 def preprocess(input_dir, compile_commands):
   compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang" # TODO: seems reasonable to just require clang as a dep?
