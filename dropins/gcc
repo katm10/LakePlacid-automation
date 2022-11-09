@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 python3 instrumentation/get_args.py $@
 gcc $@

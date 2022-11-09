@@ -1,6 +1,12 @@
 # compilers take up too much space
 compilers/
 
+# don't need intermediates
+instrumented/
+instrumented_compiled/
+preprocessed/
+scouting/
+
 # might change this, but all .txt and .json files are likely generated
 *.txt
 *.json

@@ -11,8 +11,8 @@ def main():
   if not os.path.exists(dir):
     os.makedir(dir)
 
-  if not os.path.exists(info_path):
-    with open(info_path, "w") as f:
+  if not os.path.exists(info_file):
+    with open(info_file, "w") as f:
       json_obj = {
         "compilation": [],
         "linking": []

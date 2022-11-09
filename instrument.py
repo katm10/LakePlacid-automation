@@ -108,9 +108,9 @@ def main():
 
   source_dir = sys.argv[1]
   # TODO allow command line options to choose which to run
-  # preprocess(source_dir, compile_commands)
-  # instrument(compile_commands)
-  # compile(compile_commands)
+  preprocess(source_dir, compile_commands)
+  instrument(compile_commands)
+  compile(compile_commands)
   link(link_commands)
 
 if __name__ == "__main__":
