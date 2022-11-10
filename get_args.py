@@ -1,15 +1,11 @@
 import sys
 import os
 import json
+from instrument import ROOT_DIR, LP_DIR 
 from compilation_info import CompilationInfo
 
 def main():
-  dir = "instrumentation"
-  info_file = "compilation_info.json"
-  info_path = os.path.join(dir, info_file)
-
-  if not os.path.exists(dir):
-    os.makedir(dir)
+  info_file = os.path.join(LP_DIR, "compilation_info.json")
 
   if not os.path.exists(info_file):
     with open(info_file, "w") as f:
@@ -20,7 +16,7 @@ def main():
       json.dump(json_obj, f)
 
   info = CompilationInfo(sys.argv[1:])
-  info.update(info_path)
+  info.update(info_file)
 
 if __name__ == "__main__":
   main()
