@@ -8,13 +8,13 @@ display_usage() {
 } 
 
 # if less than two arguments supplied, display usage 
-if [  $# -le 1 ] 
+if [  $# -ne 1 ] 
 then 
   display_usage
   exit 1
 fi
 
-export ROOT_DIR=(realpath $1)
+export ROOT_DIR=$(realpath $1)
 export LP_DIR=$ROOT_DIR/instrumentation
 
 # clean up previous instrumentation
