@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
+export ROOT_DIR=$(realpath $1)
+export LP_DIR=$ROOT_DIR/instrumentation
+export BIN=$LP_DIR/bin
+
 # Now our dropin replacements for C compilers and mv should be invoked on the first build
-export PATH="/data/commit/graphit/kmohr/workspace/memcached/instrumentation/dropins:$PATH"
+PATH="$LP_DIR/dropins:$PATH"
 
 display_usage() { 
 	echo -e "\nUsage: $0 [root directory of application code] \n" 
@@ -14,16 +18,19 @@ then
   exit 1
 fi
 
-export ROOT_DIR=$(realpath $1)
-export LP_DIR=$ROOT_DIR/instrumentation
-
 # clean up previous instrumentation
 rm -rf $LP_DIR/scouting/
+rm -rf $LP_DIR/bin/
 rm $LP_DIR/compilation_info.json
 
-# run the initial build to collect the build args
+# provide the correct paths to the python files
+mkdir -p $BIN
+test -f $BIN/paths.py || touch $BIN/paths.py
+sed -e s?\$\{ROOT_DIR\}?${ROOT_DIR}?g -e s?\$\{LP_DIR\}?${LP_DIR}?g  ${LP_DIR}/paths.py > ${LP_DIR}/bin/paths.py
+
+# # run the initial build to collect the build args
 make clean -C $ROOT_DIR 
 make -C $ROOT_DIR
 
 # using the build args, run the instrumentation
-python3 $LP_DIR/instrument.py $ROOT_DIR 
+python3 $LP_DIR/instrument.py -a

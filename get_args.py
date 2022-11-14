@@ -1,7 +1,7 @@
 import sys
 import os
 import json
-from instrument import ROOT_DIR, LP_DIR 
+from bin.paths import * 
 from compilation_info import CompilationInfo
 
 def main():

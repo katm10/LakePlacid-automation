@@ -4,7 +4,6 @@ import os
 GCCStage = Enum("GCCStage", ["PREPROCESS", "COMPILE", "ASSEMBLE", "LINK", "UNSPECIFIED", "UNUSED"])
 InputType = Enum("InputType", ["FILE", "DIR", "OTHER", "NONE"])
 
-
 class GCCOptionInfo:
   def __init__(self, option: str, double_dash: bool, has_arg: bool, arg_separator: str, input_type: InputType, stage: GCCStage):
     self.option = option
@@ -39,13 +38,13 @@ GCCOptionInfos = [
   GCCOptionInfo("iwithprefix", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("iwithprefixbefore", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("isystem", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MM", False, False, "", InputType.NONE, GCCStage.UNUSED),
-  GCCOptionInfo("MF", False, True, " ", InputType.FILE, GCCStage.UNUSED),
-  GCCOptionInfo("MG", False, False, "", InputType.NONE, GCCStage.UNUSED),
-  GCCOptionInfo("MP", False, False, "", InputType.NONE, GCCStage.UNUSED),
-  GCCOptionInfo("MT", False, True, " ", InputType.FILE, GCCStage.UNUSED),
-  GCCOptionInfo("MQ", False, True, " ", InputType.FILE, GCCStage.UNUSED),
-  GCCOptionInfo("M", False, False, "", InputType.NONE, GCCStage.UNUSED),
+  GCCOptionInfo("MM", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
+  GCCOptionInfo("MF", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
+  GCCOptionInfo("MG", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
+  GCCOptionInfo("MP", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
+  GCCOptionInfo("MT", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
+  GCCOptionInfo("MQ", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
+  GCCOptionInfo("M", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("nostdinc", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("P", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("U", False, True, "", InputType.NONE, GCCStage.PREPROCESS),

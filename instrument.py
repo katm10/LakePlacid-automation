@@ -1,21 +1,14 @@
 import sys
+import argparse
 import json
 import os
 import subprocess
 from compilation_info import CompilationInfo
+from bin.paths import *
 
-ROOT_DIR="${ROOT_DIR}".strip().rstrip('/')
-LP_DIR="${LP_DIR}".strip().rstrip('/')
-SCOUT_DIR = os.path.join(LP_DIR, "scouting")
-PREPROCESS_DIR = os.path.join(SCOUT_DIR, "preprocessed")
-INSTRUMENT_DIR = os.path.join(SCOUT_DIR, "instrumented")
-COMPILE_DIR = os.path.join(SCOUT_DIR, "compiled")
-OUTPUT_DIR = os.path.join(SCOUT_DIR, "output")
-JSON_PATH = os.path.join(LP_DIR, "compilation_info.json")
-
-def preprocess(input_dir, compile_commands):
+def preprocess(compile_commands):
   compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang" # TODO: seems reasonable to just require clang as a dep?
-  input_dir = os.path.abspath(input_dir)
+  input_dir = ROOT_DIR
   output_dir = PREPROCESS_DIR
  
   # with open(os.path.join(BASE_DIR, "name_changes.json")) as f:
@@ -85,14 +78,16 @@ def link(linking_commands):
     # print(command)
 
 def main():
-  if len(sys.argv) < 2:
-    print("Usage: python3 instrument.py <source dir>")
-    return
+  parser = argparse.ArgumentParser()
 
-  scouting_dirs = [SCOUT_DIR, PREPROCESS_DIR, INSTRUMENT_DIR, COMPILE_DIR, OUTPUT_DIR]
-  for dir in scouting_dirs:
-    if not os.path.exists(dir):
-      os.mkdir(dir)
+  parser.add_argument('-p', '--preprocess', action='store_true')
+  parser.add_argument('-i', '--instrument', action='store_true')
+  parser.add_argument('-c', '--compile', action='store_true')
+  parser.add_argument('-l', '--link', action='store_true')
+  parser.add_argument('-a', '--all', action='store_true')
+  parser.add_argument('-n', '--no-instrumentation', action='store_true')
+
+  args = parser.parse_args()
 
   compile_commands = []
   link_commands = []
@@ -107,12 +102,31 @@ def main():
       compilation_info.from_json(command)
       link_commands.append(compilation_info)
 
-  source_dir = sys.argv[1]
-  # TODO allow command line options to choose which to run
-  preprocess(source_dir, compile_commands)
-  instrument(compile_commands)
-  compile(compile_commands)
-  link(link_commands)
+  scouting_dirs = [SCOUT_DIR, PREPROCESS_DIR, INSTRUMENT_DIR, COMPILE_DIR, OUTPUT_DIR]
+  for dir in scouting_dirs:
+    if not os.path.exists(dir):
+      os.mkdir(dir)
+
+  if args.no_instrumentation:
+    # TODO: implement me!
+    return
+  
+  if args.preprocess or args.all:
+    if not os.path.exists(PREPROCESS_DIR):
+      os.mkdir(PREPROCESS_DIR)
+    preprocess(compile_commands)
+  if args.instrument or args.all:
+    if not os.path.exists(INSTRUMENT_DIR):
+      os.mkdir(INSTRUMENT_DIR)
+    instrument(compile_commands)
+  if args.compile or args.all:
+    if not os.path.exists(COMPILE_DIR):
+      os.mkdir(COMPILE_DIR)
+    compile(compile_commands)
+  if args.link or args.all:
+    if not os.path.exists(OUTPUT_DIR):
+      os.mkdir(OUTPUT_DIR)
+    link(link_commands)
 
 if __name__ == "__main__":
   main()

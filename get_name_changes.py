@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+from bin.paths import *
 
 MV_JSON = "mv_info.json"
 
@@ -24,6 +25,17 @@ def generate_mv_json(make_txt, json_path):
   
   with open(json_path, 'w') as f:
       json.dump(dict_obj, f)
+
+def main():
+  if not os.path.exists(MV_JSON):
+    with open(MV_JSON, "w") as f:
+      json_obj = {
+        "directory": "",
+        "file_changes": {}
+      }
+      json.dump(json_obj, f)
+  
+  
   
 if __name__ == "__main__":  
   make_txt = sys.argv[1]

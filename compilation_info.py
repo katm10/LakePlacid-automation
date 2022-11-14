@@ -2,23 +2,6 @@ import json
 import os 
 import gcc_options
 
-# [
-#   {
-#     "directory": "/home/kmohr/Documents/MIT/SuperUROP/workspace/makefile-for-c",
-#     "compile-only": bool,
-#     "output": "src/foo-test.o",
-#     "inputs": [
-      
-#     ],
-#     "args": {
-#       "preprocessor": [],
-#       "compiler": [],
-#       "linker": [],
-#       "unspecified": []
-#     }
-#   }
-# ]
-
 class CompilationInfo:
   def __init__(self, command = None):
     self.compile_only = False

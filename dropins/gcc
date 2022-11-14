@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
 
-python3 instrumentation/get_args.py $@
-gcc $@
-
+python3 $LP_DIR/get_args.py $@
+/usr/bin/gcc $@
