@@ -64,19 +64,21 @@ class CompilationInfo:
     with open(json_file, "w") as f:
       json.dump(json_obj, f)
 
-  def convert_args(self, init_args, directory = ROOT_DIR):
-    
-    rel_dir = os.path.relpath(self.directory, ROOT_DIR)
+  def convert_args(self, init_args, directory):
 
+    if not os.path.samefile(self.directory, ROOT_DIR):
+        rel_dir = os.path.relpath(self.directory, ROOT_DIR)
+        directory = os.path.join(directory, rel_dir)
+        
     args = []
     for arg in init_args:
       if arg.target is not None:
         if arg.target_type == gcc_options.InputType.FILE:
-          arg.target = os.path.join(directory, rel_dir, arg.target)
+          arg.target = os.path.join(directory, arg.target)
           dir = os.path.dirname(arg.target)
           os.makedirs(dir, exist_ok=True) 
         elif arg.target_type == gcc_options.InputType.DIR:
-          arg.target = os.path.join(directory, rel_dir, arg.target)
+          arg.target = os.path.join(directory, arg.target)
           os.makedirs(arg.target, exist_ok=True)
 
         if arg.separator == " ":
@@ -85,19 +87,19 @@ class CompilationInfo:
           args.append(arg.option + arg.separator + arg.target)
     return args
 
-  def get_preprocessor_args(self, directory = None):
+  def get_preprocessor_args(self, directory = ROOT_DIR):
     return self.convert_args(self.preprocessor_args, directory)
 
-  def get_compiler_args(self, directory = None):
+  def get_compiler_args(self, directory = ROOT_DIR):
     return self.convert_args(self.compiler_args, directory)
 
-  def get_assembler_args(self, directory = None):
+  def get_assembler_args(self, directory = ROOT_DIR):
     return self.convert_args(self.assembler_args, directory)
   
-  def get_linker_args(self, directory = None):
+  def get_linker_args(self, directory = ROOT_DIR):
     return self.convert_args(self.linker_args, directory)
 
-  def get_unspecified_args(self, directory = None):
+  def get_unspecified_args(self, directory = ROOT_DIR):
     return self.convert_args(self.unspecified_args, directory)
 
   def get_output(self, directory = None):
