@@ -42,8 +42,8 @@ def compile(compile_commands):
 
   for entry in compile_commands:
     command = [compiler]
-    command.extend(entry.get_compiler_args())
-    command.extend(entry.get_unspecified_args())
+    command.extend(entry.get_compiler_args(input_dir))
+    command.extend(entry.get_unspecified_args(input_dir))
     command.extend(["-c", f"{input_dir}/{entry.inputs[0]}", "-fPIC", "-o", f"{output_dir}/{entry.output}"])
     
     print(command)
@@ -56,8 +56,8 @@ def link(linking_commands):
 
   for entry in linking_commands:
     command = [compiler]
-    command.extend(entry.get_linker_args())
-    command.extend(entry.get_unspecified_args())
+    command.extend(entry.get_linker_args(input_dir))
+    command.extend(entry.get_unspecified_args(input_dir))
     command.extend(["-o", f"{output_dir}/{entry.output}"])
     command.extend([f"{input_dir}/{input}" for input in entry.inputs])
     command.extend([os.path.join(LP_DIR, "support", "trace_support.c"), "-lpthread", "-levent"])
