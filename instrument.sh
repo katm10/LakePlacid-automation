@@ -8,11 +8,11 @@ export BIN=$LP_DIR/bin
 PATH="$LP_DIR/dropins:$PATH"
 
 display_usage() { 
-	echo -e "\nUsage: $0 [root directory of application code] \n" 
+	echo -e "\nUsage: $0 [root directory of application code] [package to make] \n" 
 } 
 
 # if less than two arguments supplied, display usage 
-if [  $# -ne 1 ] 
+if [  $# -ne 2 ] 
 then 
   display_usage
   exit 1
@@ -30,7 +30,10 @@ sed -e s?\$\{ROOT_DIR\}?${ROOT_DIR}?g -e s?\$\{LP_DIR\}?${LP_DIR}?g  ${LP_DIR}/p
 
 # # run the initial build to collect the build args
 make clean -C $ROOT_DIR 
-make -C $ROOT_DIR
+make $2 -C $ROOT_DIR
 
 # using the build args, run the instrumentation
 python3 $LP_DIR/instrument.py -a
+
+echo "Done!"
+

@@ -17,9 +17,6 @@ def preprocess(compile_commands):
   for entry in compile_commands:
     command = [compiler]
     command.extend(entry.get_preprocessor_args())
-    command.extend(entry.get_assembler_args())
-    command.extend(entry.get_compiler_args())
-    command.extend(entry.get_linker_args())
     command.extend(entry.get_unspecified_args())
     command.extend(["-E", f"{input_dir}/{entry.inputs[0]}"])
 
@@ -33,9 +30,6 @@ def instrument(compile_commands):
   input_dir = os.path.join(SCOUT_DIR, PREPROCESS_DIR)
   output_dir = os.path.join(SCOUT_DIR, INSTRUMENT_DIR)
 
-  with open(JSON_PATH, "r") as f:
-    info = json.load(f)
-
   for entry in compile_commands:
     command = [compiler, f"{input_dir}/{entry.inputs[0]}", "--"]
     with open(os.path.join(output_dir, entry.inputs[0]), "w") as f:
@@ -45,9 +39,6 @@ def compile(compile_commands):
   compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang"
   input_dir = os.path.join(SCOUT_DIR, INSTRUMENT_DIR)
   output_dir = os.path.join(SCOUT_DIR, COMPILE_DIR)
-
-  with open(JSON_PATH, "r") as f:
-    info = json.load(f)
 
   for entry in compile_commands:
     command = [compiler]
@@ -63,16 +54,13 @@ def link(linking_commands):
   input_dir = os.path.join(SCOUT_DIR, COMPILE_DIR)
   output_dir = os.path.join(SCOUT_DIR, OUTPUT_DIR)
 
-  with open(JSON_PATH, "r") as f:
-    info = json.load(f)
-
   for entry in linking_commands:
     command = [compiler]
     command.extend(entry.get_linker_args())
     command.extend(entry.get_unspecified_args())
     command.extend(["-o", f"{output_dir}/{entry.output}"])
     command.extend([f"{input_dir}/{input}" for input in entry.inputs])
-    command.extend([os.path.join(BASE_DIR, "support", "trace_support.c"), "-lpthread", "-levent"])
+    command.extend([os.path.join(LP_DIR, "support", "trace_support.c"), "-lpthread", "-levent"])
 
     subprocess.Popen(command)
     # print(command)

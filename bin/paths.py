@@ -1,7 +1,7 @@
 import os
 
-ROOT_DIR="/home/kmohr/Documents/MIT/SuperUROP/workspace/memcached".strip().rstrip('/')
-LP_DIR="/home/kmohr/Documents/MIT/SuperUROP/workspace/memcached/instrumentation".strip().rstrip('/')
+ROOT_DIR="/data/commit/graphit/kmohr/workspace/memcached".strip().rstrip('/')
+LP_DIR="/data/commit/graphit/kmohr/workspace/memcached/instrumentation".strip().rstrip('/')
 SCOUT_DIR = os.path.join(LP_DIR, "scouting")
 PREPROCESS_DIR = os.path.join(SCOUT_DIR, "preprocessed")
 INSTRUMENT_DIR = os.path.join(SCOUT_DIR, "instrumented")
