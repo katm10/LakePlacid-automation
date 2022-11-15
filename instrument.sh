@@ -8,11 +8,11 @@ export BIN=$LP_DIR/bin
 PATH="$LP_DIR/dropins:$PATH"
 
 display_usage() { 
-	echo -e "\nUsage: $0 [root directory of application code] [package to make] \n" 
+	echo -e "\nUsage: $0 [root directory of application code] [package to make, opt] \n" 
 } 
 
-# if less than two arguments supplied, display usage 
-if [  $# -ne 2 ] 
+# No arguments are supplied, display usage 
+if [  $# -lt 1 ] 
 then 
   display_usage
   exit 1
