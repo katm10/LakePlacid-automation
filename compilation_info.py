@@ -135,7 +135,7 @@ class CompilationInfo:
           self.unspecified_args.append(option.to_dict())
 
       else:
-        self.inputs.append(rel_dir, option.arg)
+        self.inputs.append(os.path.join(rel_dir, arg))
 
       indx += 1
     
