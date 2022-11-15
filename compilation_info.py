@@ -107,6 +107,7 @@ class CompilationInfo:
     return " ".join(self.inputs)
 
   def parse(self):
+    rel_dir = os.path.relpath(self.directory, ROOT_DIR)
     indx = 0
     while indx < len(self.args):
       arg = self.args[indx].strip()
@@ -118,7 +119,7 @@ class CompilationInfo:
           indx += 1
           continue
         elif option.option == "-o":
-          self.output = option.target
+          self.output = os.path.join(rel_dir, option.target)
           indx += 1
           continue
 
@@ -134,7 +135,7 @@ class CompilationInfo:
           self.unspecified_args.append(option.to_dict())
 
       else:
-        self.inputs.append(arg)
+        self.inputs.append(rel_dir, option.arg)
 
       indx += 1
     
