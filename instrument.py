@@ -15,14 +15,19 @@ def preprocess(compile_commands):
   #   name_map = json.load(f)
 
   for entry in compile_commands:
+    input = os.path.join(input_dir, entry.inputs[0])
+    if not os.path.exists(input):
+      os.makedirs(os.path.dirname(input), exist_ok=True)
+
     command = [compiler]
     command.extend(entry.get_preprocessor_args())
     command.extend(entry.get_unspecified_args())
-    command.extend(["-E", f"{input_dir}/{entry.inputs[0]}"])
+    command.extend(["-E", f"{input}"])
 
     print(command)
 
-    with open(os.path.join(output_dir, entry.inputs[0]), "w") as f:
+
+    with open(input, "w") as f:
       subprocess.run(command, stdout=f, cwd=output_dir)
 
 def instrument(compile_commands):
