@@ -6,6 +6,7 @@ instrumented/
 instrumented_compiled/
 preprocessed/
 scouting/
+bin/
 
 # might change this, but all .txt and .json files are likely generated
 *.txt
