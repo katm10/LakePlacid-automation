@@ -17,7 +17,12 @@ def preprocess(compile_commands):
   for entry in compile_commands:
     input = os.path.join(input_dir, entry.inputs[0])
     if not os.path.exists(input):
-      os.makedirs(os.path.dirname(input), exist_ok=True)
+        print(f"{input} does not exist")
+        pass
+
+    output = os.path.join(output_dir, entry.inputs[0])
+    if not os.path.exists(os.path.dirname(output)):
+      os.makedirs(os.path.dirname(output), exist_ok=True)
 
     command = [compiler]
     command.extend(entry.get_preprocessor_args())
@@ -26,8 +31,7 @@ def preprocess(compile_commands):
 
     print(command)
 
-
-    with open(input, "w") as f:
+    with open(output, "w") as f:
       subprocess.run(command, stdout=f, cwd=output_dir)
 
 def instrument(compile_commands):
@@ -36,8 +40,16 @@ def instrument(compile_commands):
   output_dir = os.path.join(SCOUT_DIR, INSTRUMENT_DIR)
 
   for entry in compile_commands:
-    command = [compiler, f"{input_dir}/{entry.inputs[0]}", "--"]
-    with open(os.path.join(output_dir, entry.inputs[0]), "w") as f:
+    input = os.path.join(input_dir, entry.inputs[0])
+    if not os.path.exists(input):
+        print(f"{input} does not exist")
+        pass
+    output = os.path.join(output_dir, entry.inputs[0])
+    if not os.path.exists(os.path.dirname(output)):
+      os.makedirs(os.path.dirname(output), exist_ok=True)
+
+    command = [compiler, f"{input}", "--"]
+    with open(output, "w") as f:
       subprocess.run(command, stdout=f)
 
 def compile(compile_commands):
@@ -46,10 +58,18 @@ def compile(compile_commands):
   output_dir = os.path.join(SCOUT_DIR, COMPILE_DIR)
 
   for entry in compile_commands:
+    input = os.path.join(input_dir, entry.inputs[0])
+    if not os.path.exists(input):
+        print(f"{input} does not exist")
+        pass
+    output = os.path.join(output_dir, entry.output)
+    if not os.path.exists(os.path.dirname(output)):
+      os.makedirs(os.path.dirname(output), exist_ok=True)
+
     command = [compiler]
     command.extend(entry.get_compiler_args(input_dir))
     command.extend(entry.get_unspecified_args(input_dir))
-    command.extend(["-c", f"{input_dir}/{entry.inputs[0]}", "-fPIC", "-o", f"{output_dir}/{entry.output}"])
+    command.extend(["-c", f"{input}", "-fPIC", "-o", f"{output}"])
     
     print(command)
     subprocess.run(command)
@@ -60,10 +80,14 @@ def link(linking_commands):
   output_dir = os.path.join(SCOUT_DIR, OUTPUT_DIR)
 
   for entry in linking_commands:
+    output = os.path.join(output_dir, entry.output)
+    if not os.path.exists(os.path.dirname(output)):
+      os.makedirs(os.path.dirname(output), exist_ok=True)
+
     command = [compiler]
     command.extend(entry.get_linker_args(input_dir))
     command.extend(entry.get_unspecified_args(input_dir))
-    command.extend(["-o", f"{output_dir}/{entry.output}"])
+    command.extend(["-o", f"{output}"])
     command.extend([f"{input_dir}/{input}" for input in entry.inputs])
     command.extend([os.path.join(LP_DIR, "support", "trace_support.c"), "-lpthread", "-levent"])
 
@@ -123,4 +147,5 @@ def main():
 
 if __name__ == "__main__":
   main()
+
 

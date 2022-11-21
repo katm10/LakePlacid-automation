@@ -110,6 +110,7 @@ class CompilationInfo:
 
   def parse(self):
     rel_dir = os.path.relpath(self.directory, ROOT_DIR)
+    self.output = os.path.join(rel_dir, "a.o")
     indx = 0
     while indx < len(self.args):
       arg = self.args[indx].strip()
