@@ -5,8 +5,8 @@ from bin.paths import *
 from build_info import CompilationInfo
 
 def main():
-  if not os.path.exists(JSON_FILE):
-    with open(JSON_FILE, "w") as f:
+  if not os.path.exists(JSON_PATH):
+    with open(JSON_PATH, "w") as f:
       json.dump({}, f)
 
   info = CompilationInfo(sys.argv[1], sys.argv[2:])

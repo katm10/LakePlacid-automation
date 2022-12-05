@@ -31,7 +31,7 @@ from gcc_options import *
 
 
 class BuildInfoDAG:
-  def __init__(self, file=JSON_FILE):
+  def __init__(self, file=JSON_PATH):
     with open(file, "r") as f:
       self.dag = json.load(f)
 
@@ -52,7 +52,7 @@ class BuildInfoDAG:
 class CompilationInfo:
   def __init__(self, compiler, argv=None):
     self.compiler = compiler
-    self.abs_dir = os.getpwd()
+    self.abs_dir = os.getcwd()
     self.rel_dir = os.path.relpath(self.abs_dir, ROOT_DIR)
     self.args = CompilationInfo.empty_args()
     self.inputs = []
@@ -127,14 +127,14 @@ class CompilationInfo:
     while indx < len(argv):
       arg = argv[indx].strip()
       if arg[0] == "-":
-        option, indx = gcc_options.GCCOption.construct(arg, indx, argv)
+        option, indx = GCCOption.construct(arg, indx, argv)
 
         if option.option == "-E":
-          self.last_stage = BuildStage.PREPROCESS
+          self.last_stage = GCCStage.PREPROCESS
         elif option.option == "-S":
-          self.last_stage = BuildStage.COMPILE
+          self.last_stage = GCCStage.COMPILE
         elif option.option == "-c":
-          self.last_stage = BuildStage.ASSEMBLE
+          self.last_stage = GCCStage.ASSEMBLE
           self.compile_only = True
           indx += 1
           continue
@@ -142,7 +142,7 @@ class CompilationInfo:
           self.output = os.path.join(self.rel_dir, option.target)
           indx += 1
           continue
-        self.args[option.stage.name].append(option.to_json())
+        self.args[option.stage.name].append(option)
       else:
         self.inputs.append(os.path.join(self.rel_dir, arg))
 
@@ -152,18 +152,18 @@ class CompilationInfo:
     file_type = self.inputs[0].split(".")[-1]
     for input in self.inputs:
       if input.split(".")[-1] != file_type:
-        return BuildStage.UNSPECIFIED
+        return GCCStage.UNSPECIFIED
 
     if file_type in ("c", "h", "S"):
-      return BuildStage.PREPROCESS
+      return GCCStage.PREPROCESS
     elif file_type == "i":
-      return BuildStage.COMPILE
+      return GCCStage.COMPILE
     elif file_type == "s":
-      return BuildStage.ASSEMBLE
+      return GCCStage.ASSEMBLE
     elif file_type in ("o", "so"):
-      return BuildStage.LINK
+      return GCCStage.LINK
 
-  def update(self, file=JSON_FILE):
+  def update(self, file=JSON_PATH):
     with open(file, "r") as f:
       json_obj = json.load(f)
 
