@@ -33,7 +33,7 @@ make clean -C $ROOT_DIR
 make $2 -C $ROOT_DIR
 
 # using the build args, run the instrumentation
-python3 $LP_DIR/instrument.py -a
+# python3 $LP_DIR/instrument.py -a
 
 echo "Done!"
 

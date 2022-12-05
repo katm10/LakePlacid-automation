@@ -1,7 +1,7 @@
 from enum import Enum
 import os
 
-GCCStage = Enum("GCCStage", ["PREPROCESS", "COMPILE", "ASSEMBLE", "LINK", "UNSPECIFIED", "UNUSED"])
+GCCStage = Enum("GCCStage", ["PREPROCESS", "COMPILE", "ASSEMBLE", "LINK", "INSTRUMENT", "UNSPECIFIED", "UNUSED"])
 InputType = Enum("InputType", ["FILE", "DIR", "OTHER", "NONE"])
 
 class GCCOptionInfo:
@@ -19,6 +19,15 @@ GCCOptionInfos = [
   GCCOptionInfo("S", False, False, "", InputType.NONE, GCCStage.COMPILE),
   GCCOptionInfo("o", False, True, " ", InputType.NONE, GCCStage.LINK),
   GCCOptionInfo("x", False, True, " ", InputType.NONE, GCCStage.UNSPECIFIED),
+
+  # To ignore
+  GCCOptionInfo("MM", False, False, "", InputType.NONE, GCCStage.UNUSED),
+  GCCOptionInfo("MF", False, True, " ", InputType.FILE, GCCStage.UNUSED),
+  GCCOptionInfo("MG", False, False, "", InputType.NONE, GCCStage.UNUSED),
+  GCCOptionInfo("MP", False, False, "", InputType.NONE, GCCStage.UNUSED),
+  GCCOptionInfo("MT", False, True, " ", InputType.FILE, GCCStage.UNUSED),
+  GCCOptionInfo("MQ", False, True, " ", InputType.FILE, GCCStage.UNUSED),
+  GCCOptionInfo("M", False, False, "", InputType.NONE, GCCStage.UNUSED),
 
   # Preprocessor
   GCCOptionInfo("Aquestion", False, True, "=", InputType.NONE, GCCStage.PREPROCESS),
@@ -38,13 +47,6 @@ GCCOptionInfos = [
   GCCOptionInfo("iwithprefix", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("iwithprefixbefore", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("isystem", False, True, " ", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MM", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MF", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MG", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MP", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MT", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MQ", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
-  GCCOptionInfo("M", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("nostdinc", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("P", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
   GCCOptionInfo("U", False, True, "", InputType.NONE, GCCStage.PREPROCESS),
@@ -93,7 +95,7 @@ class GCCOption:
     self.target_type = target_type
     self.separator = separator
 
-  def to_dict(self):
+  def to_json(self):
     return {
       "option": self.option,
       "target": self.target,
@@ -148,16 +150,10 @@ class GCCOption:
     ), indx
 
   @staticmethod
-  def json_to_args(json, stage):
-    args = []
-    for option in json:
-      gcc_opt = GCCOption(
-        stage,
-        option["option"],
-        option["target"],
-        InputType[option["target_type"]],
-        option["separator"]
-      )
-      args.append(gcc_opt)
-
-    return args
+  def from_json(option):
+    return GCCOption(
+      option["option"],
+      option["target"],
+      InputType[option["target_type"]],
+      option["separator"]
+    )

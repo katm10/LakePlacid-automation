@@ -1,18 +1,14 @@
-import sys
 import argparse
 import json
 import os
 import subprocess
-from compilation_info import CompilationInfo
+from build_info import CompilationInfo
 from bin.paths import *
 
 def preprocess(compile_commands):
   compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang" # TODO: seems reasonable to just require clang as a dep?
   input_dir = ROOT_DIR
   output_dir = PREPROCESS_DIR
- 
-  # with open(os.path.join(BASE_DIR, "name_changes.json")) as f:
-  #   name_map = json.load(f)
 
   for entry in compile_commands:
     input = os.path.join(input_dir, entry.inputs[0])

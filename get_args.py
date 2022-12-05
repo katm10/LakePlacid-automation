@@ -2,21 +2,15 @@ import sys
 import os
 import json
 from bin.paths import * 
-from compilation_info import CompilationInfo
+from build_info import CompilationInfo
 
 def main():
-  info_file = os.path.join(LP_DIR, "compilation_info.json")
+  if not os.path.exists(JSON_FILE):
+    with open(JSON_FILE, "w") as f:
+      json.dump({}, f)
 
-  if not os.path.exists(info_file):
-    with open(info_file, "w") as f:
-      json_obj = {
-        "compilation": [],
-        "linking": []
-      }
-      json.dump(json_obj, f)
-
-  info = CompilationInfo(sys.argv[1:])
-  info.update(info_file)
+  info = CompilationInfo(sys.argv[1], sys.argv[2:])
+  info.update()
 
 if __name__ == "__main__":
   main()
