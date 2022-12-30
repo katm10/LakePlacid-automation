@@ -21,13 +21,13 @@ GCCOptionInfos = [
   GCCOptionInfo("x", False, True, " ", InputType.NONE, GCCStage.UNSPECIFIED),
 
   # To ignore
-  GCCOptionInfo("MM", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MF", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MG", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MP", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MT", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
-  GCCOptionInfo("MQ", False, True, " ", InputType.FILE, GCCStage.PREPROCESS),
-  GCCOptionInfo("M", False, False, "", InputType.NONE, GCCStage.PREPROCESS),
+  GCCOptionInfo("MM", False, False, "", InputType.NONE, GCCStage.UNUSED),
+  GCCOptionInfo("MF", False, True, " ", InputType.FILE, GCCStage.UNUSED),
+  GCCOptionInfo("MG", False, False, "", InputType.NONE, GCCStage.UNUSED),
+  GCCOptionInfo("MP", False, False, "", InputType.NONE, GCCStage.UNUSED),
+  GCCOptionInfo("MT", False, True, " ", InputType.FILE, GCCStage.UNUSED),
+  GCCOptionInfo("MQ", False, True, " ", InputType.FILE, GCCStage.UNUSED),
+  GCCOptionInfo("M", False, False, "", InputType.NONE, GCCStage.UNUSED),
 
   # Preprocessor
   GCCOptionInfo("Aquestion", False, True, "=", InputType.NONE, GCCStage.PREPROCESS),
