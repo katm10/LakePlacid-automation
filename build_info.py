@@ -50,14 +50,18 @@ class BuildInfoDAG:
 
     self.application = application
     self.leaves = set()
+    self.compiler = None
 
     self.build_dag()
+
+  def set_compiler(self, compiler):
+    self.compiler = compiler
 
   def build_dag(self):
     self.dag = {}
     visited = set()
 
-    app_node = BuildInfoNode(self.compilation_dict[self.application], [], None, os.path.join(SCOUT_DIR, self.compilation_dict[self.application].stages[-1].name))
+    app_node = BuildInfoNode(self.compilation_dict[self.application], [], None, os.path.join(SCOUT_DIR, self.compilation_dict[self.application].stages[-1].name), self.compiler)
     visited.add(self.application)
 
     parents = [app_node]
@@ -73,7 +77,7 @@ class BuildInfoDAG:
         if input not in self.compilation_dict.keys():
           continue
 
-        child = BuildInfoNode(self.compilation_dict[input], [], parent, os.path.join(SCOUT_DIR, self.compilation_dict[input].stages[-1].name))
+        child = BuildInfoNode(self.compilation_dict[input], [], parent, os.path.join(SCOUT_DIR, self.compilation_dict[input].stages[-1].name), self.compiler)
         parent.inputs.append(child)
         parents.append(child)
         is_leaf = False
@@ -91,20 +95,38 @@ class BuildInfoDAG:
           next_frontier.add(node.output)
       frontier = next_frontier
 
-  # def insert(self, stage, compilation_info):
-  #   nodes = self.leaves
-  #   while len(nodes) > 0:
-  #     node = nodes.pop()
-  #     if stage in node.info["stages"]:
-  #       if len(node.info["stages"]) == 1:
-  #         pass
-  #       else:
-  #         # Split node first
-  #         self.split(node, stage)
-  #       return
+  def insert(self, stage, compiler):
+    nodes = self.leaves
+    while len(nodes) > 0:
+      node = nodes.pop()
+      if stage in node.info.stages:
+        if len(node.info.stages) > 1:
+          # Split node first
+          node = node.split(stage)
 
-  #     nodes.extend(node.inputs)
-  #   pass
+        # Make a copy of the current node and then fix the
+        # - compiler
+        # - stage
+        # - output
+        # - inputs
+
+        info = copy.deepcopy(node.info)
+        info.compiler = compiler
+        info.stages = [GCCStage.INSTRUMENT]
+
+        file, filetype = os.path.splitext(info.output)
+        info.output = file + "_instrumented" + filetype
+
+        instrument_node = BuildInfoNode(info, [], node, os.path.join(SCOUT_DIR, info.stages[-1].name))
+        node.inputs = [instrument_node]
+        node.info.inputs = [instrument_node.get_output_path()]
+        
+        for input in instrument_node.inputs:
+          input.output = instrument_node
+
+      else:
+        nodes.add(node.output)
+    pass
 
   def move(self, abs_src, abs_dst):
     rel_src = os.path.normpath(os.path.relpath(abs_src, ROOT_DIR))
@@ -201,37 +223,27 @@ class BuildInfoNode:
       subprocess.Popen(command)
       return
 
+  def split(self, stage):    
+    back_info = copy.copy(self.info)
 
-  @staticmethod
-  def split_and_construct(info, output):
-    # Make the current node (fix the directory + filetype)
+    # Include the stage we want to split on in the back node
+    back_info.stages = []
+    while self.info.stages[-1] != stage:
+      back_info.stages.insert(0, self.info.stages.pop())
+    back_info.stages.insert(0, self.info.stages.pop())
 
-    
-    filetype = stage_to_type(info.stages[0]) if info.stages[0] != GCCStage.COMPILE else stage_to_type(info.stages[1])
-    dir = os.path.join(SCOUT_DIR, info.stages[0].name)
+    # Fix the output filetype for the front node
+    output_file, _ = os.path.splitext(self.info.output)
+    self.info.output = output_file + "." + stage_to_type[self.info.stages[-1]]
 
-    # Figure out if we need to recurse
+    # Fix the input filetype for the back node
+    back_info.inputs = [self.info.output]
 
-    if len(info.stages) == 1:
-      return BuildInfoNode(info, [], output, os.path.join(SCOUT_DIR, info.stages[0].name))
-    elif len(info.stages) == 2 and info.stages[-1] == GCCStage.ASSEMBLE:
-      return BuildInfoNode(info, [], output, os.path.join(SCOUT_DIR, info.stages[0].name))
-    else:
-      back_info = copy.copy(info)
+    back = BuildInfoNode(back_info, [], self.output, os.path.join(SCOUT_DIR, back_info.stages[-1].name))
+    front = BuildInfoNode(self.info, self.inputs, back, os.path.join(SCOUT_DIR, self.info.stages[-1].name))
+    back.inputs = [front]
 
-      back_info.stages = []
-      if info.stages[-1] == GCCStage.ASSEMBLE:
-        back_info.stages.extend(info.stages[-2:])
-        info.stages.pop()
-      else:
-        back_info.stages.append(back_info.stages[-1])
-      info.stages.pop()
-
-      back = BuildInfoNode(back_info, [], output, os.path.join(SCOUT_DIR, back_info.stages[0].name))
-      front = BuildInfoNode.split_and_construct(info, back)
-      back.inputs.append(front)
-
-      return back
+    return back
 
 class CompilationInfo:
   def __init__(self, compiler, argv=None):

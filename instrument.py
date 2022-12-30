@@ -108,6 +108,8 @@ def main():
     dag.build()
     return
   else: 
+    dag.set_compiler("/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang")
+    dag.insert(GCCStage.COMPILE, "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace")
     dag.build()
     pass
 
