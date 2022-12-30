@@ -5,10 +5,11 @@ export LP_DIR=$ROOT_DIR/instrumentation
 export BIN=$LP_DIR/bin
 
 # Now our dropin replacements for C compilers and mv should be invoked on the first build
+OLD_PATH=$PATH
 PATH="$LP_DIR/dropins:$PATH"
 
 display_usage() { 
-	echo -e "\nUsage: $0 [root directory of application code] [package to make, opt] \n" 
+	echo -e "\nUsage: $0 [root directory of application code] [package to make] \n" 
 } 
 
 # No arguments are supplied, display usage 
@@ -32,8 +33,11 @@ sed -e s?\$\{ROOT_DIR\}?${ROOT_DIR}?g -e s?\$\{LP_DIR\}?${LP_DIR}?g  ${LP_DIR}/p
 make clean -C $ROOT_DIR 
 make $2 -C $ROOT_DIR
 
+# We don't need to instrument the result, so we can remove the dropins
+PATH=$OLD_PATH
+
 # using the build args, run the instrumentation
-# python3 $LP_DIR/instrument.py -a
+python3 $LP_DIR/instrument.py $2
 
 echo "Done!"
 

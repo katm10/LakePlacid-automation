@@ -2,8 +2,9 @@ import argparse
 import json
 import os
 import subprocess
-from build_info import CompilationInfo
+from build_info import BuildInfoDAG
 from bin.paths import *
+from gcc_options import GCCStage
 
 def preprocess(compile_commands):
   compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang" # TODO: seems reasonable to just require clang as a dep?
@@ -92,54 +93,23 @@ def link(linking_commands):
 
 def main():
   parser = argparse.ArgumentParser()
-
-  parser.add_argument('-p', '--preprocess', action='store_true')
-  parser.add_argument('-i', '--instrument', action='store_true')
-  parser.add_argument('-c', '--compile', action='store_true')
-  parser.add_argument('-l', '--link', action='store_true')
-  parser.add_argument('-a', '--all', action='store_true')
+  parser.add_argument("application", help="Application to build")
   parser.add_argument('-n', '--no-instrumentation', action='store_true')
-
   args = parser.parse_args()
 
-  compile_commands = []
-  link_commands = []
-  with open(JSON_PATH, "r") as f:
-    info = json.load(f)
-    for command in info["compilation"]:
-      compilation_info = CompilationInfo()
-      compilation_info.from_json(command)
-      compile_commands.append(compilation_info)
-    for command in info["linking"]:
-      compilation_info = CompilationInfo()
-      compilation_info.from_json(command)
-      link_commands.append(compilation_info)
+  for stage in GCCStage:
+    if not os.path.exists(os.path.join(SCOUT_DIR, stage.name)):
+      os.makedirs(os.path.join(SCOUT_DIR, stage.name), exist_ok=True)
 
-  scouting_dirs = [SCOUT_DIR, PREPROCESS_DIR, INSTRUMENT_DIR, COMPILE_DIR, OUTPUT_DIR]
-  for dir in scouting_dirs:
-    if not os.path.exists(dir):
-      os.mkdir(dir)
+  dag = BuildInfoDAG(args.application)
 
   if args.no_instrumentation:
-    # TODO: implement me!
+    print("No instrumentation")
+    dag.build()
     return
-  
-  if args.preprocess or args.all:
-    if not os.path.exists(PREPROCESS_DIR):
-      os.mkdir(PREPROCESS_DIR)
-    preprocess(compile_commands)
-  if args.instrument or args.all:
-    if not os.path.exists(INSTRUMENT_DIR):
-      os.mkdir(INSTRUMENT_DIR)
-    instrument(compile_commands)
-  if args.compile or args.all:
-    if not os.path.exists(COMPILE_DIR):
-      os.mkdir(COMPILE_DIR)
-    compile(compile_commands)
-  if args.link or args.all:
-    if not os.path.exists(OUTPUT_DIR):
-      os.mkdir(OUTPUT_DIR)
-    link(link_commands)
+  else: 
+    dag.build()
+    pass
 
 if __name__ == "__main__":
   main()
