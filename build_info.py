@@ -41,14 +41,18 @@ stage_to_type = {
 
 
 class BuildInfoDAG:
-  def __init__(self, application, file=JSON_PATH):
+  def __init__(self, applications, file=JSON_PATH):
     with open(file, "r") as f:
       self.compilation_dict = json.load(f)
 
     for key in self.compilation_dict.keys():
       self.compilation_dict[key] = CompilationInfo.from_json(self.compilation_dict[key])
+    
+    if len(applications) == 0:
+      # Find all executables in the compilation dict
+      applications = [key for key in self.compilation_dict.keys() if os.path.splitext(self.compilation_dict[key])[1] == ""]
 
-    self.application = application
+    self.applications = applications
     self.leaves = set()
     self.compiler = None
 
@@ -60,14 +64,15 @@ class BuildInfoDAG:
   def build_dag(self):
     self.dag = {}
     visited = set()
+    parents = []
 
-    app_node = BuildInfoNode(self.compilation_dict[self.application], [], None, os.path.join(SCOUT_DIR, self.compilation_dict[self.application].stages[-1].name), self.compiler)
-    visited.add(self.application)
+    for application in self.applications:
+      app_node = BuildInfoNode(self.compilation_dict[application], [], None, os.path.join(SCOUT_DIR, self.compilation_dict[application].stages[-1].name), self.compiler)
+      visited.add(application)
+      parents.append(app_node)
 
-    parents = [app_node]
     while len(parents) > 0:
       parent = parents.pop()
-      is_leaf = True
       for input in parent.info.inputs:
         if input in visited:
           continue
@@ -75,16 +80,13 @@ class BuildInfoDAG:
         visited.add(input)
 
         if input not in self.compilation_dict.keys():
-          continue
-
-        child = BuildInfoNode(self.compilation_dict[input], [], parent, os.path.join(SCOUT_DIR, self.compilation_dict[input].stages[-1].name), self.compiler)
-        parent.inputs.append(child)
-        parents.append(child)
-        is_leaf = False
-
-      if is_leaf:
-        self.leaves.add(parent)
-
+          # This is a file we need to grab from the cache, so it is a leaf in the DAG
+          self.leaves.add(parent)
+        else: 
+          child = BuildInfoNode(self.compilation_dict[input], [], parent, os.path.join(SCOUT_DIR, self.compilation_dict[input].stages[-1].name), self.compiler)
+          parent.inputs.append(child)
+          parents.append(child)
+        
   def build(self):
     frontier = self.leaves
     while len(frontier) > 0:
@@ -96,7 +98,7 @@ class BuildInfoDAG:
       frontier = next_frontier
 
   def insert(self, stage, compiler):
-    nodes = self.leaves
+    nodes = copy.copy(self.leaves)
     while len(nodes) > 0:
       node = nodes.pop()
       if stage in node.info.stages:
@@ -234,7 +236,7 @@ class BuildInfoNode:
 
     # Fix the output filetype for the front node
     output_file, _ = os.path.splitext(self.info.output)
-    self.info.output = output_file + "." + stage_to_type[self.info.stages[-1]]
+    self.info.output = output_file + stage_to_type[self.info.stages[-1]]
 
     # Fix the input filetype for the back node
     back_info.inputs = [self.info.output]

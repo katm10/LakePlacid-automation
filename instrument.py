@@ -93,7 +93,7 @@ def link(linking_commands):
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument("application", help="Application to build")
+  parser.add_argument("applications", nargs="*", default=None, help="Application(s) to build")
   parser.add_argument('-n', '--no-instrumentation', action='store_true')
   args = parser.parse_args()
 
@@ -101,17 +101,17 @@ def main():
     if not os.path.exists(os.path.join(SCOUT_DIR, stage.name)):
       os.makedirs(os.path.join(SCOUT_DIR, stage.name), exist_ok=True)
 
-  dag = BuildInfoDAG(args.application)
+  dag = BuildInfoDAG(args.applications)
 
   if args.no_instrumentation:
     print("No instrumentation")
     dag.build()
     return
   else: 
+    print("Instrumentation being applied")
     dag.set_compiler("/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang")
     dag.insert(GCCStage.COMPILE, "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace")
     dag.build()
-    pass
 
 if __name__ == "__main__":
   main()
