@@ -50,7 +50,7 @@ class BuildInfoDAG:
     
     if len(applications) == 0:
       # Find all executables in the compilation dict
-      applications = [key for key in self.compilation_dict.keys() if os.path.splitext(self.compilation_dict[key])[1] == ""]
+      applications = [key for key in self.compilation_dict.keys() if os.path.splitext(self.compilation_dict[key].output)[1] == ""]
 
     self.applications = applications
     self.leaves = set()
