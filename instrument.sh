@@ -31,9 +31,13 @@ sed -e s?\$\{ROOT_DIR\}?${ROOT_DIR}?g -e s?\$\{LP_DIR\}?${LP_DIR}?g  ${LP_DIR}/p
 
 # run the initial build to collect the build args
 make clean -C $ROOT_DIR 
-for i in ${@:2}; do
-  make $i -C $ROOT_DIR
-done
+if [ $# -lt 2 ]; then
+  make -C $ROOT_DIR
+else
+  for i in ${@:2}; do
+    make $i -C $ROOT_DIR
+  done
+fi
 
 # We don't need to instrument the result, so we can remove the dropins
 PATH=$OLD_PATH
