@@ -27,9 +27,8 @@ def preprocess(compile_commands):
     command.extend(["-E", f"{input}"])
 
     print(command)
-
-    with open(output, "w") as f:
-      subprocess.run(command, stdout=f, cwd=output_dir)
+    # with open(output, "w") as f:
+    #   subprocess.run(command, stdout=f, cwd=output_dir)
 
 def instrument(compile_commands):
   compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace"
@@ -46,8 +45,10 @@ def instrument(compile_commands):
       os.makedirs(os.path.dirname(output), exist_ok=True)
 
     command = [compiler, f"{input}", "--"]
-    with open(output, "w") as f:
-      subprocess.run(command, stdout=f)
+    
+    print(command)
+    # with open(output, "w") as f:
+    #   subprocess.run(command, stdout=f)
 
 def compile(compile_commands):
   compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang"
@@ -69,7 +70,7 @@ def compile(compile_commands):
     command.extend(["-c", f"{input}", "-fPIC", "-o", f"{output}"])
     
     print(command)
-    subprocess.run(command)
+    # subprocess.run(command)
 
 def link(linking_commands):
   compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang" # TODO: do we need to use gcc?
@@ -87,9 +88,9 @@ def link(linking_commands):
     command.extend(["-o", f"{output}"])
     command.extend([f"{input_dir}/{input}" for input in entry.inputs])
     command.extend([os.path.join(LP_DIR, "support", "trace_support.c"), "-lpthread", "-levent"])
-
-    subprocess.Popen(command)
-    # print(command)
+    
+    print(command)
+    # subprocess.Popen(command)
 
 def main():
   parser = argparse.ArgumentParser()

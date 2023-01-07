@@ -55,14 +55,13 @@ class BuildInfoDAG:
     self.applications = applications
     self.leaves = set()
     self.compiler = None
-
-    self.build_dag()
+    self.insertions = []
 
   def set_compiler(self, compiler):
+    print("Setting compiler to " + compiler)
     self.compiler = compiler
 
   def build_dag(self):
-    self.dag = {}
     visited = set()
     parents = []
 
@@ -74,7 +73,8 @@ class BuildInfoDAG:
     while len(parents) > 0:
       parent = parents.pop()
       for input in parent.info.inputs:
-        if input in visited:
+        if input in visited and input in self.compilation_dict.keys():
+          print("WARNING: " + input + " is used in multiple places in the compilation DAG. This is not supported yet. Skipping.")
           continue
 
         visited.add(input)
@@ -88,6 +88,9 @@ class BuildInfoDAG:
           parents.append(child)
         
   def build(self):
+    self.build_dag()
+    self.apply_insertions()
+
     frontier = self.leaves
     while len(frontier) > 0:
       next_frontier = set()
@@ -98,6 +101,14 @@ class BuildInfoDAG:
       frontier = next_frontier
 
   def insert(self, stage, compiler):
+    print("Inserting " + stage.name + " stage with " + compiler + " compiler")
+    self.insertions.append((stage, compiler))
+
+  def apply_insertions(self):
+    for stage, compiler in self.insertions:
+      self.apply_insertion(stage, compiler)
+
+  def apply_insertion(self, stage, compiler):
     nodes = copy.copy(self.leaves)
     while len(nodes) > 0:
       node = nodes.pop()
@@ -119,7 +130,7 @@ class BuildInfoDAG:
         file, filetype = os.path.splitext(info.output)
         info.output = file + "_instrumented" + filetype
 
-        instrument_node = BuildInfoNode(info, [], node, os.path.join(SCOUT_DIR, info.stages[-1].name))
+        instrument_node = BuildInfoNode(info, [], node, os.path.join(SCOUT_DIR, info.stages[-1].name), self.compiler)
         node.inputs = [instrument_node]
         node.info.inputs = [instrument_node.get_output_path()]
         
@@ -144,7 +155,7 @@ class BuildInfoDAG:
         break
 
 class BuildInfoNode:
-  def __init__(self, info, inputs, output, new_dir, compiler=None):
+  def __init__(self, info, inputs, output, new_dir, compiler):
     self.info = info
     self.inputs = inputs
     self.output = output
@@ -191,7 +202,6 @@ class BuildInfoNode:
       print(" ".join(command))
       with open(self.get_output_path(), "w") as f:
         subprocess.run(command, stdout=f)
-      return
 
     elif self.info.stages[-1] == GCCStage.INSTRUMENT:
       assert(len(inputs) == 1)
@@ -199,21 +209,18 @@ class BuildInfoNode:
       print(" ".join(command))
       with open(self.get_output_path(), "w") as f:
         subprocess.run(command, stdout=f)
-      return
 
     elif self.info.stages[-1] == GCCStage.COMPILE:
       assert(len(inputs) == 1)
       command.extend(["-S", inputs[0]], "-o", self.get_output_path())
       print(" ".join(command))
       subprocess.run(command)
-      return
 
     elif self.info.stages[-1] == GCCStage.ASSEMBLE:
       assert(len(inputs) == 1)
       command.extend(["-c", inputs[0], "-fPIC", "-o", self.get_output_path()])
       print(" ".join(command))
       subprocess.run(command)
-      return
 
     elif self.info.stages[-1] == GCCStage.LINK:
       assert(len(inputs) > 0)
@@ -223,9 +230,9 @@ class BuildInfoNode:
 
       print(" ".join(command))
       subprocess.Popen(command)
-      return
 
-  def split(self, stage):    
+  def split(self, stage):  
+    print("Splitting " + self.info.output + " on " + stage.name)  
     back_info = copy.copy(self.info)
 
     # Include the stage we want to split on in the back node
@@ -241,9 +248,15 @@ class BuildInfoNode:
     # Fix the input filetype for the back node
     back_info.inputs = [self.info.output]
 
-    back = BuildInfoNode(back_info, [], self.output, os.path.join(SCOUT_DIR, back_info.stages[-1].name))
-    front = BuildInfoNode(self.info, self.inputs, back, os.path.join(SCOUT_DIR, self.info.stages[-1].name))
-    back.inputs = [front]
+    back = BuildInfoNode(back_info, [], self.output, os.path.join(SCOUT_DIR, back_info.stages[-1].name), self.compiler)
+    
+    self.output.inputs.remove(self)
+    self.output.inputs.append(back)
+
+    self.output = back
+    self.new_dir = os.path.join(SCOUT_DIR, self.info.stages[-1].name)
+
+    back.inputs = [self]
 
     return back
 
@@ -367,6 +380,9 @@ class CompilationInfo:
   def update(self, file=JSON_PATH):
     with open(file, "r") as f:
       json_obj = json.load(f)
+
+    if self.path in json_obj.keys():
+      raise Exception(self.path + " already exists")
 
     value = self.to_json()
     json_obj[self.path] = value

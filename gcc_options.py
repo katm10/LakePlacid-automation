@@ -55,7 +55,7 @@ GCCOptionInfos = [
   GCCOptionInfo("I", False, True, "", InputType.DIR, GCCStage.PREPROCESS),
 
   # Warning
-  GCCOptionInfo("pedantic", False, False, "", InputType.NONE, GCCStage.COMPILE),
+  GCCOptionInfo("pedantic", False, False, "", InputType.NONE, GCCStage.UNUSED),
   GCCOptionInfo("pedantic-errors", False, False, "", InputType.NONE, GCCStage.COMPILE),
   GCCOptionInfo("W", False, True, "", InputType.NONE, GCCStage.COMPILE),
   
