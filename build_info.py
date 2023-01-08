@@ -280,6 +280,8 @@ class BuildInfoNode:
 class CompilationInfo:
   def __init__(self, compiler, argv=None):
     self.compiler = compiler
+    self.argv = argv
+
     self.abs_dir = os.path.normpath(os.getcwd())
     self.rel_dir = os.path.normpath(os.path.relpath(self.abs_dir, ROOT_DIR))
     self.args = CompilationInfo.empty_args()
@@ -379,20 +381,25 @@ class CompilationInfo:
       indx += 1
 
   def get_first_stage(self):
-    file_type = self.inputs[0].split(".")[-1]
+
+    ext_to_stage = {
+        "c": GCCStage.PREPROCESS,
+        "h": GCCStage.PREPROCESS,
+        "S": GCCStage.PREPROCESS,
+        "i": GCCStage.COMPILE,
+        "s": GCCStage.ASSEMBLE,
+        "o": GCCStage.LINK,
+        "so": GCCStage.LINK,
+        "a": GCCStage.LINK
+    }
+
+    stage = ext_to_stage[self.inputs[0].split(".")[-1]]
     for input in self.inputs:
-      if input.split(".")[-1] != file_type:
-        print("BAD INPUT: " + input + " " + file_type)
+      if ext_to_stage[input.split(".")[-1]] != stage:
+        print("BAD INPUT: " + self.compiler + " " + " ".join(self.argv))
         return GCCStage.UNSPECIFIED
 
-    if file_type in ("c", "h", "S"):
-      return GCCStage.PREPROCESS
-    elif file_type == "i":
-      return GCCStage.COMPILE
-    elif file_type == "s":
-      return GCCStage.ASSEMBLE
-    elif file_type in ("o", "so"):
-      return GCCStage.LINK
+    return stage
 
   def update(self, file=JSON_PATH):
     with open(file, "r") as f:
