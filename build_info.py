@@ -283,7 +283,6 @@ class CompilationInfo:
     if argv:
       self.last_stage = GCCStage.LINK
       self.parse(argv)
-      self.path = os.path.normpath(os.path.join(self.rel_dir, self.output))
       self.first_stage = self.get_first_stage()
 
       if self.first_stage != self.last_stage:
@@ -297,7 +296,6 @@ class CompilationInfo:
       else:
         self.stages = [self.first_stage]
     else:
-      self.path = None
       self.last_stage = None
       self.first_stage = None
       self.stages = None
@@ -394,11 +392,11 @@ class CompilationInfo:
     with open(file, "r") as f:
       json_obj = json.load(f)
 
-    if self.path in json_obj.keys():
-      raise Exception(self.path + " already exists")
+    if self.output in json_obj.keys():
+      raise Exception(self.output + " already exists")
 
     value = self.to_json()
-    json_obj[self.path] = value
+    json_obj[self.output] = value
 
     with open(file, "w") as f:
       json.dump(json_obj, f)
