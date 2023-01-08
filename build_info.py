@@ -16,7 +16,6 @@ stage_to_type = {
 
 # {
 #     "<path relative to ROOT_DIR>": {
-#         "abs_dir": "<abs_dir>",
 #         "rel_dir": "<rel_dir>",
 #         "command": "<command>",
 #         "inputs": [],
@@ -158,7 +157,6 @@ class BuildInfoDAG:
     for key, value in self.compilation_dict.items():
       if key == rel_src:
         value["rel_dir"] = os.path.dirname(rel_dst)
-        value["abs_dir"] = os.path.dirname(abs_dst)
         value.output = os.path.basename(rel_dst)
         self.compilation_dict[rel_dst] = value
         del self.compilation_dict[key]
@@ -197,10 +195,9 @@ class BuildInfoNode:
     if len(self.inputs) == 0:
       # We need to get the inputs from the source directory
       for input in self.info.inputs:
-        inputs.append(os.path.join(self.info.abs_dir, input))
+        inputs.append(os.path.join(ROOT_DIR, input))
     else:
       for input in self.inputs:
-
         inputs.append(input.get_output_path())
 
     if self.info.stages[-1] == GCCStage.PREPROCESS:
@@ -211,7 +208,7 @@ class BuildInfoNode:
       assert(len(inputs) == 1)
       original_info = self.inputs[0].info
       assert(len(original_info.inputs) == 1)
-      original_path = os.path.join(original_info.abs_dir, original_info.inputs[0])
+      original_path = os.path.join(ROOT_DIR, original_info.inputs[0])
       command.extend([original_path, inputs[0], "--"])
 
     elif self.info.stages[-1] == GCCStage.COMPILE:
@@ -294,8 +291,7 @@ class CompilationInfo:
     self.compiler = compiler
     self.argv = argv
 
-    self.abs_dir = os.path.normpath(os.getcwd())
-    self.rel_dir = os.path.normpath(os.path.relpath(self.abs_dir, ROOT_DIR))
+    self.rel_dir = os.path.normpath(os.path.relpath(os.getcwd(), ROOT_DIR))
     self.args = CompilationInfo.empty_args()
     self.inputs = []
     if argv:
@@ -342,7 +338,6 @@ class CompilationInfo:
 
   def to_json(self):
     return {
-        "abs_dir": self.abs_dir,
         "rel_dir": self.rel_dir,
         "compiler": self.compiler,
         "inputs": self.inputs,
@@ -354,7 +349,6 @@ class CompilationInfo:
   @staticmethod
   def from_json(json_obj):
     info = CompilationInfo(json_obj["compiler"])
-    info.abs_dir = json_obj["abs_dir"]
     info.rel_dir = json_obj["rel_dir"]
     info.inputs = json_obj["inputs"]
     info.output = json_obj["output"]
