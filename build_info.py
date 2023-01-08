@@ -123,14 +123,14 @@ class BuildInfoDAG:
         # - output
         # - inputs
 
-        info = copy.deepcopy(node.info)
+        info = copy.copy(node.info)
         info.compiler = compiler
         info.stages = [GCCStage.INSTRUMENT]
 
         file, filetype = os.path.splitext(info.output)
         info.output = file + "_instrumented" + filetype
 
-        instrument_node = BuildInfoNode(info, [], node, os.path.join(SCOUT_DIR, info.stages[-1].name), self.compiler)
+        instrument_node = BuildInfoNode(info, copy.copy(node.inputs), node, os.path.join(SCOUT_DIR, info.stages[-1].name), compiler)
         node.inputs = [instrument_node]
         node.info.inputs = [instrument_node.get_output_path()]
         
