@@ -128,7 +128,7 @@ class BuildInfoDAG:
         info.stages = [GCCStage.INSTRUMENT]
 
         file, filetype = os.path.splitext(info.output)
-        info.output = file + "_instrumented" + filetype
+        info.output = file + "_instrumented.c" 
 
         instrument_node = BuildInfoNode(info, copy.copy(node.inputs), node, os.path.join(SCOUT_DIR, info.stages[-1].name), compiler)
         node.inputs = [instrument_node]
@@ -190,6 +190,7 @@ class BuildInfoNode:
         inputs.append(os.path.join(self.info.abs_dir, input))
     else:
       for input in self.inputs:
+
         inputs.append(input.get_output_path())
 
     if self.info.stages[-1] == GCCStage.PREPROCESS:
@@ -198,7 +199,10 @@ class BuildInfoNode:
 
     elif self.info.stages[-1] == GCCStage.INSTRUMENT:
       assert(len(inputs) == 1)
-      command.extend([inputs[0], "--"])
+      original_info = self.inputs[0].info
+      assert(len(original_info.inputs) == 1)
+      original_path = os.path.join(original_info.abs_dir, original_info.inputs[0])
+      command.extend([original_path, inputs[0], "--"])
 
     elif self.info.stages[-1] == GCCStage.COMPILE:
       assert(len(inputs) == 1)
@@ -206,7 +210,7 @@ class BuildInfoNode:
 
     elif self.info.stages[-1] == GCCStage.ASSEMBLE:
       assert(len(inputs) == 1)
-      command.extend(["-c", inputs[0], "-fPIC", "-o", self.get_output_path()])
+      command.extend(["-c", inputs[0], "-Wno-constant-logical-operand", "-fPIC", "-o", self.get_output_path()])
 
     elif self.info.stages[-1] == GCCStage.LINK:
       assert(len(inputs) > 0)
@@ -238,12 +242,12 @@ class BuildInfoNode:
       subprocess.run(command)
 
     elif self.info.stages[-1] == GCCStage.LINK:
-      subprocess.Popen(command)
+      subprocess.run(command)
 
   def build(self):
     command = self.build_command()
     print(" ".join(command))
-    # self.run_command(command)
+    self.run_command(command)
 
   def split(self, stage):  
     back_info = copy.copy(self.info)
