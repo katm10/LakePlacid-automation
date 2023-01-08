@@ -43,7 +43,7 @@ fi
 PATH=$OLD_PATH
 
 # using the build args, run the instrumentation
-python3 $LP_DIR/instrument.py ${@:2}
+python3 $LP_DIR/instrument.py ${@:2} -p
 
 echo "Done!"
 

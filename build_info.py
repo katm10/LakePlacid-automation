@@ -62,11 +62,13 @@ class BuildInfoDAG:
     self.compiler = compiler
 
   def build_dag(self):
+    dag = {}
     visited = set()
     parents = []
 
     for application in self.applications:
-      app_node = BuildInfoNode(self.compilation_dict[application], [], None, os.path.join(SCOUT_DIR, self.compilation_dict[application].stages[-1].name), self.compiler)
+      app_node = BuildInfoNode(self.compilation_dict[application], [], [], os.path.join(SCOUT_DIR, self.compilation_dict[application].stages[-1].name), self.compiler)
+      dag[application] = app_node
       visited.add(application)
       parents.append(app_node)
 
@@ -74,7 +76,8 @@ class BuildInfoDAG:
       parent = parents.pop()
       for input in parent.info.inputs:
         if input in visited and input in self.compilation_dict.keys():
-          print("WARNING: " + input + " is used in multiple places in the compilation DAG. This is not supported yet. Skipping.")
+          dag[input].outputs.append(parent)
+          parent.inputs.append(dag[input])
           continue
 
         visited.add(input)
@@ -83,21 +86,28 @@ class BuildInfoDAG:
           # This is a file we need to grab from the cache, so it is a leaf in the DAG
           self.leaves.add(parent)
         else: 
-          child = BuildInfoNode(self.compilation_dict[input], [], parent, os.path.join(SCOUT_DIR, self.compilation_dict[input].stages[-1].name), self.compiler)
+          child = BuildInfoNode(self.compilation_dict[input], [], [parent], os.path.join(SCOUT_DIR, self.compilation_dict[input].stages[-1].name), self.compiler)
+          dag[input] = child
           parent.inputs.append(child)
           parents.append(child)
         
-  def build(self):
+  def build(self, print_only=False):
     self.build_dag()
     self.apply_insertions()
 
+    visited = set()
     frontier = self.leaves
+
     while len(frontier) > 0:
       next_frontier = set()
       for node in frontier:
-        node.build()
-        if node.output is not None:
-          next_frontier.add(node.output)
+        node.build(print_only)
+        visited.add(node)
+
+        for output in node.outputs:
+          if output not in visited:
+            next_frontier.add(output)
+
       frontier = next_frontier
 
   def insert(self, stage, compiler):
@@ -127,18 +137,18 @@ class BuildInfoDAG:
         info.compiler = compiler
         info.stages = [GCCStage.INSTRUMENT]
 
-        file, filetype = os.path.splitext(info.output)
+        file, _ = os.path.splitext(info.output)
         info.output = file + "_instrumented.c" 
 
-        instrument_node = BuildInfoNode(info, copy.copy(node.inputs), node, os.path.join(SCOUT_DIR, info.stages[-1].name), compiler)
+        instrument_node = BuildInfoNode(info, copy.copy(node.inputs), [node], os.path.join(SCOUT_DIR, info.stages[-1].name), compiler)
         node.inputs = [instrument_node]
         node.info.inputs = [instrument_node.get_output_path()]
         
         for input in instrument_node.inputs:
-          input.output = instrument_node
+          input.outputs = [instrument_node]
 
       else:
-        nodes.add(node.output)
+        nodes.update(node.outputs)
     pass
 
   def move(self, abs_src, abs_dst):
@@ -155,10 +165,10 @@ class BuildInfoDAG:
         break
 
 class BuildInfoNode:
-  def __init__(self, info, inputs, output, new_dir, compiler):
+  def __init__(self, info, inputs, outputs, new_dir, compiler):
     self.info = info
     self.inputs = inputs
-    self.output = output
+    self.outputs = outputs
     self.new_dir = new_dir
     self.compiler = compiler
 
@@ -244,10 +254,11 @@ class BuildInfoNode:
     elif self.info.stages[-1] == GCCStage.LINK:
       subprocess.run(command)
 
-  def build(self):
+  def build(self, print_only=False):
     command = self.build_command()
     print(" ".join(command))
-    self.run_command(command)
+    if not print_only:
+      self.run_command(command)
 
   def split(self, stage):  
     back_info = copy.copy(self.info)
@@ -265,12 +276,13 @@ class BuildInfoNode:
     # Fix the input filetype for the back node
     back_info.inputs = [self.info.output]
 
-    back = BuildInfoNode(back_info, [], self.output, os.path.join(SCOUT_DIR, back_info.stages[-1].name), self.compiler)
+    back = BuildInfoNode(back_info, [], self.outputs, os.path.join(SCOUT_DIR, back_info.stages[-1].name), self.compiler)
     
-    self.output.inputs.remove(self)
-    self.output.inputs.append(back)
+    for output in self.outputs:
+      output.inputs.remove(self)
+      output.inputs.append(back)
 
-    self.output = back
+    self.outputs = [back]
     self.new_dir = os.path.join(SCOUT_DIR, self.info.stages[-1].name)
 
     back.inputs = [self]
