@@ -175,17 +175,13 @@ class BuildInfoNode:
       os.makedirs(os.path.dirname(path))
     return path
 
-  def build(self):
+  def build_command(self):
     command = []
 
     if self.compiler is not None:
       command.append(self.compiler)
     else:
       command.append(self.info.compiler)
-
-    for stage in self.info.stages:
-      command.extend(self.info.get_args_as_list(stage))
-    command.extend(self.info.get_args_as_list(GCCStage.UNSPECIFIED))
 
     inputs = []
     if len(self.inputs) == 0:
@@ -199,28 +195,18 @@ class BuildInfoNode:
     if self.info.stages[-1] == GCCStage.PREPROCESS:
       assert(len(inputs) == 1)
       command.extend(["-E", inputs[0]])
-      print(" ".join(command))
-      with open(self.get_output_path(), "w") as f:
-        subprocess.run(command, stdout=f)
 
     elif self.info.stages[-1] == GCCStage.INSTRUMENT:
       assert(len(inputs) == 1)
       command.extend([inputs[0], "--"])
-      print(" ".join(command))
-      with open(self.get_output_path(), "w") as f:
-        subprocess.run(command, stdout=f)
 
     elif self.info.stages[-1] == GCCStage.COMPILE:
       assert(len(inputs) == 1)
       command.extend(["-S", inputs[0]], "-o", self.get_output_path())
-      print(" ".join(command))
-      subprocess.run(command)
 
     elif self.info.stages[-1] == GCCStage.ASSEMBLE:
       assert(len(inputs) == 1)
       command.extend(["-c", inputs[0], "-fPIC", "-o", self.get_output_path()])
-      print(" ".join(command))
-      subprocess.run(command)
 
     elif self.info.stages[-1] == GCCStage.LINK:
       assert(len(inputs) > 0)
@@ -228,11 +214,38 @@ class BuildInfoNode:
       command.extend(inputs)
       command.extend([os.path.join(LP_DIR, "support", "trace_support.c"), "-lpthread", "-levent"])
 
-      print(" ".join(command))
+    if self.info.stages[-1] != GCCStage.INSTRUMENT:
+      # Don't include flags when instrumenting
+      for stage in self.info.stages:
+        command.extend(self.info.get_args_as_list(stage))
+      command.extend(self.info.get_args_as_list(GCCStage.UNSPECIFIED))
+
+    return command
+
+  def run_command(self, command):
+    if self.info.stages[-1] == GCCStage.PREPROCESS:
+      with open(self.get_output_path(), "w") as f:
+        subprocess.run(command, stdout=f)
+
+    elif self.info.stages[-1] == GCCStage.INSTRUMENT:
+      with open(self.get_output_path(), "w") as f:
+        subprocess.run(command, stdout=f)
+
+    elif self.info.stages[-1] == GCCStage.COMPILE:
+      subprocess.run(command)
+
+    elif self.info.stages[-1] == GCCStage.ASSEMBLE:
+      subprocess.run(command)
+
+    elif self.info.stages[-1] == GCCStage.LINK:
       subprocess.Popen(command)
 
+  def build(self):
+    command = self.build_command()
+    print(" ".join(command))
+    # self.run_command(command)
+
   def split(self, stage):  
-    print("Splitting " + self.info.output + " on " + stage.name)  
     back_info = copy.copy(self.info)
 
     # Include the stage we want to split on in the back node
