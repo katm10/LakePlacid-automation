@@ -283,7 +283,7 @@ class BuildInfoNode:
     self.new_dir = os.path.join(SCOUT_DIR, self.info.stages[-1].name)
 
     back.inputs = [self]
-
+    
     return back
 
 class CompilationInfo:
