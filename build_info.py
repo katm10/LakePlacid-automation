@@ -104,7 +104,7 @@ class BuildInfoDAG:
         visited.add(node)
 
         for output in node.outputs:
-          if output not in visited:
+          if output not in visited and output.ready():
             next_frontier.add(output)
 
       frontier = next_frontier
@@ -169,6 +169,14 @@ class BuildInfoNode:
     self.outputs = outputs
     self.new_dir = new_dir
     self.compiler = compiler
+    self.built = False
+
+  def ready(self):
+    for input in self.inputs:
+      if not input.built:
+        return False
+
+    return True
 
   def front(self):
     front_node = self
@@ -252,6 +260,8 @@ class BuildInfoNode:
       subprocess.run(command)
 
   def build(self, print_only=False):
+    assert(not self.built)
+    self.built = True
     command = self.build_command()
     print(" ".join(command))
     if not print_only:
