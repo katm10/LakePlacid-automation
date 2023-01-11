@@ -78,7 +78,7 @@ fi
 PATH=$OLD_PATH
 
 # using the build args, run the instrumentation
-echo python3 $LP_DIR/instrument.py ${apps[@]} $flags
+python3 $LP_DIR/instrument.py ${apps[@]} $flags
 
 echo "Done!"
 

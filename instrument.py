@@ -107,13 +107,12 @@ def main():
 
   if args.no_instrumentation:
     print("No instrumentation")
-    dag.build()
-    return
   else: 
     print("Instrumentation being applied")
     dag.set_compiler("/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang")
     dag.insert(GCCStage.COMPILE, "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace")
-    dag.build(args.print_only)
+
+  dag.build(args.print_only)
 
 if __name__ == "__main__":
   main()
