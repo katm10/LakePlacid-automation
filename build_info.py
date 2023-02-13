@@ -46,10 +46,11 @@ class BuildInfoDAG:
 
     for key in self.compilation_dict.keys():
       self.compilation_dict[key] = CompilationInfo.from_json(self.compilation_dict[key])
-    
+
     if len(applications) == 0:
       # Find all executables in the compilation dict
-      applications = [key for key in self.compilation_dict.keys() if os.path.splitext(self.compilation_dict[key].output)[1] == ""]
+      applications = [key for key in self.compilation_dict.keys() \
+              if os.path.splitext(self.compilation_dict[key].output)[1] == ""]
 
     self.applications = applications
     self.leaves = set()
@@ -66,7 +67,12 @@ class BuildInfoDAG:
     parents = []
 
     for application in self.applications:
-      app_node = BuildInfoNode(self.compilation_dict[application], [], [], os.path.join(SCOUT_DIR, self.compilation_dict[application].stages[-1].name), self.compiler)
+      app_node = BuildInfoNode(self.compilation_dict[application],
+                               [],
+                               [],
+                               os.path.join(SCOUT_DIR,
+                                            self.compilation_dict[application].stages[-1].name),
+                               self.compiler)
       dag[application] = app_node
       visited.add(application)
       parents.append(app_node)
@@ -75,8 +81,9 @@ class BuildInfoDAG:
       parent = parents.pop()
       for input in parent.info.inputs:
         if input in visited and input in self.compilation_dict.keys():
-          dag[input].outputs.append(parent)
-          parent.inputs.append(dag[input])
+          if parent not in dag[input].outputs:
+            dag[input].outputs.append(parent)
+            parent.inputs.append(dag[input])
           continue
 
         visited.add(input)
@@ -84,7 +91,10 @@ class BuildInfoDAG:
         if input not in self.compilation_dict.keys():
           # This is a file we need to grab from the cache, so it is a leaf in the DAG
           self.leaves.add(parent)
-        else: 
+        else:
+          # If we previously thought this was a leaf but it has a node child, remove it from leaves
+          self.leaves.discard(parent)
+
           child = BuildInfoNode(self.compilation_dict[input], [], [parent], os.path.join(SCOUT_DIR, self.compilation_dict[input].stages[-1].name), self.compiler)
           dag[input] = child
           parent.inputs.append(child)
@@ -95,7 +105,7 @@ class BuildInfoDAG:
     self.apply_insertions()
 
     visited = set()
-    frontier = self.leaves
+    frontier = set(leaf for leaf in self.leaves if leaf.ready())
 
     while len(frontier) > 0:
       next_frontier = set()
@@ -137,12 +147,12 @@ class BuildInfoDAG:
         info.stages = [GCCStage.INSTRUMENT]
 
         file, _ = os.path.splitext(info.output)
-        info.output = file + "_instrumented.c" 
+        info.output = file + "_instrumented.c"
 
         instrument_node = BuildInfoNode(info, copy.copy(node.inputs), [node], os.path.join(SCOUT_DIR, info.stages[-1].name), compiler)
         node.inputs = [instrument_node]
-        node.info.inputs = [instrument_node.get_output_path()]
-        
+        node.info.inputs = [info.output]
+
         for input in instrument_node.inputs:
           input.outputs = [instrument_node]
 
@@ -199,14 +209,15 @@ class BuildInfoNode:
     else:
       command.append(self.info.compiler)
 
+    input_paths = set(self.info.inputs)
     inputs = []
-    if len(self.inputs) == 0:
-      # We need to get the inputs from the source directory
-      for input in self.info.inputs:
-        inputs.append(os.path.join(ROOT_DIR, input))
-    else:
-      for input in self.inputs:
+    for input in self.inputs:
+        path = input.info.output
+        input_paths.discard(path)
         inputs.append(input.get_output_path())
+
+    for path in input_paths:
+        inputs.append(os.path.join(ROOT_DIR, path))
 
     if self.info.stages[-1] == GCCStage.PREPROCESS:
       assert(len(inputs) == 1)
@@ -224,6 +235,7 @@ class BuildInfoNode:
       command.extend(["-S", inputs[0]], "-o", self.get_output_path())
 
     elif self.info.stages[-1] == GCCStage.ASSEMBLE:
+      print(self.get_output_path() + " has inputs " + " ".join(inputs))
       assert(len(inputs) == 1)
       command.extend(["-c", inputs[0], "-Wno-constant-logical-operand", "-fPIC", "-o", self.get_output_path()])
 
@@ -261,6 +273,11 @@ class BuildInfoNode:
 
   def build(self, print_only=False):
     assert(not self.built)
+    
+    if not self.ready():
+        print(self.get_output_path() + " is NOT ready")
+        assert(False)
+    
     self.built = True
     command = self.build_command()
     print(" ".join(command))
