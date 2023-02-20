@@ -135,7 +135,7 @@ class GCCOption:
         indx += 1
         arg = args[indx]
       elif option_info.arg_separator == "":
-        arg_indx = (double_dash and 2 or 1) + len(option_info.option) + len(option_info.arg_separator)
+        arg_indx = (double_dash and 2 or 1) + len(option_info.option)
         arg = option[arg_indx:]
         option = option[:arg_indx]
       else:

@@ -1,6 +1,5 @@
 import os
 import json
-from enum import Enum
 from bin.paths import *
 from gcc_options import *
 import copy
@@ -398,7 +397,6 @@ class CompilationInfo:
           self.last_stage = GCCStage.COMPILE
         elif option.option == "-c":
           self.last_stage = GCCStage.ASSEMBLE
-          self.compile_only = True
           indx += 1
           continue
         elif option.option == "-o":
