@@ -8,6 +8,9 @@ preprocessed/
 scouting/
 bin/
 
+# I've added some test scripts around the place
+local_*
+
 # might change this, but all .txt and .json files are likely generated
 *.txt
 *.json
