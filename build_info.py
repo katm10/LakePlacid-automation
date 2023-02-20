@@ -145,7 +145,7 @@ class BuildInfoDAG:
         info.stages = [GCCStage.INSTRUMENT]
 
         file, _ = os.path.splitext(info.output)
-        info.output = name + "_" + file + stage_to_type[stage]
+        info.output = name + "_" + file + ".c" # TODO: don't hardcode this
 
         instrument_node = BuildInfoNode(info, copy.copy(node.inputs), [node], os.path.join(SCOUT_DIR, info.stages[-1].name), compiler)
         node.inputs = [instrument_node]

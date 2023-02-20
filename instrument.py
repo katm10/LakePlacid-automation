@@ -22,7 +22,9 @@ def main():
   else: 
     print("Instrumentation being applied")
     dag.set_compiler("/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang")
-    dag.insert(GCCStage.COMPILE, "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace")
+    dag.insert(GCCStage.COMPILE,
+            "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace",
+            "extract-trace")
 
   dag.build(args.print_only)
 
