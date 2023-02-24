@@ -1,6 +1,5 @@
 import os
 import json
-from enum import Enum
 from bin.paths import *
 from gcc_options import *
 import copy
@@ -119,15 +118,14 @@ class BuildInfoDAG:
 
       frontier = next_frontier
 
-  def insert(self, stage, compiler):
-    print("Inserting " + stage.name + " stage with " + compiler + " compiler")
-    self.insertions.append((stage, compiler))
+  def insert(self, stage, compiler, name):
+    self.insertions.append((stage, compiler, name))
 
   def apply_insertions(self):
-    for stage, compiler in self.insertions:
-      self.apply_insertion(stage, compiler)
+    for stage, compiler, name in self.insertions:
+      self.apply_insertion(stage, compiler, name)
 
-  def apply_insertion(self, stage, compiler):
+  def apply_insertion(self, stage, compiler, name):
     nodes = copy.copy(self.leaves)
     while len(nodes) > 0:
       node = nodes.pop()
@@ -147,7 +145,7 @@ class BuildInfoDAG:
         info.stages = [GCCStage.INSTRUMENT]
 
         file, _ = os.path.splitext(info.output)
-        info.output = file + "_instrumented.c"
+        info.output = name + "_" + file + ".c" # TODO: don't hardcode this
 
         instrument_node = BuildInfoNode(info, copy.copy(node.inputs), [node], os.path.join(SCOUT_DIR, info.stages[-1].name), compiler)
         node.inputs = [instrument_node]
@@ -398,7 +396,6 @@ class CompilationInfo:
           self.last_stage = GCCStage.COMPILE
         elif option.option == "-c":
           self.last_stage = GCCStage.ASSEMBLE
-          self.compile_only = True
           indx += 1
           continue
         elif option.option == "-o":
