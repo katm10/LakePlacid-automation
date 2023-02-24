@@ -20,8 +20,10 @@ GCCOptionInfos = [
   GCCOptionInfo("o", False, True, " ", InputType.NONE, GCCStage.LINK),
   GCCOptionInfo("x", False, True, " ", InputType.NONE, GCCStage.UNSPECIFIED),
 
+
   # To ignore
   GCCOptionInfo("MM", False, False, "", InputType.NONE, GCCStage.UNUSED),
+  GCCOptionInfo("flto", False, False, "", InputType.NONE, GCCStage.UNUSED),
   GCCOptionInfo("MF", False, True, " ", InputType.FILE, GCCStage.UNUSED),
   GCCOptionInfo("MG", False, False, "", InputType.NONE, GCCStage.UNUSED),
   GCCOptionInfo("MP", False, False, "", InputType.NONE, GCCStage.UNUSED),
