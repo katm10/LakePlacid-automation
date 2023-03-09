@@ -39,7 +39,7 @@ stage_to_type = {
 
 
 class BuildInfoDAG:
-  def __init__(self, applications, file=JSON_PATH):
+  def __init__(self, applications, output_dir, file=JSON_PATH):
     with open(file, "r") as f:
       self.compilation_dict = json.load(f)
 
@@ -56,6 +56,11 @@ class BuildInfoDAG:
     self.compiler = None
     self.insertions = []
 
+    for stage in GCCStage:
+      if not os.path.exists(os.path.join(output_dir, stage.name)):
+        os.makedirs(os.path.join(output_dir, stage.name))
+    self.output_dir = output_dir
+
   def set_compiler(self, compiler):
     print("Setting compiler to " + compiler)
     self.compiler = compiler
@@ -69,7 +74,7 @@ class BuildInfoDAG:
       app_node = BuildInfoNode(self.compilation_dict[application],
                                [],
                                [],
-                               os.path.join(SCOUT_DIR,
+                               os.path.join(self.output_dir,
                                             self.compilation_dict[application].stages[-1].name),
                                self.compiler)
       dag[application] = app_node
@@ -94,7 +99,7 @@ class BuildInfoDAG:
           # If we previously thought this was a leaf but it has a node child, remove it from leaves
           self.leaves.discard(parent)
 
-          child = BuildInfoNode(self.compilation_dict[input], [], [parent], os.path.join(SCOUT_DIR, self.compilation_dict[input].stages[-1].name), self.compiler)
+          child = BuildInfoNode(self.compilation_dict[input], [], [parent], os.path.join(self.output_dir, self.compilation_dict[input].stages[-1].name), self.compiler)
           dag[input] = child
           parent.inputs.append(child)
           parents.append(child)
@@ -147,7 +152,7 @@ class BuildInfoDAG:
         file, _ = os.path.splitext(info.output)
         info.output = name + "_" + file + ".c" # TODO: don't hardcode this
 
-        instrument_node = BuildInfoNode(info, copy.copy(node.inputs), [node], os.path.join(SCOUT_DIR, info.stages[-1].name), compiler)
+        instrument_node = BuildInfoNode(info, copy.copy(node.inputs), [node], os.path.join(self.output_dir, info.stages[-1].name), compiler)
         node.inputs = [instrument_node]
         node.info.inputs = [info.output]
 
@@ -298,14 +303,14 @@ class BuildInfoNode:
     # Fix the input filetype for the back node
     back_info.inputs = [self.info.output]
 
-    back = BuildInfoNode(back_info, [], self.outputs, os.path.join(SCOUT_DIR, back_info.stages[-1].name), self.compiler)
+    back = BuildInfoNode(back_info, [], self.outputs, os.path.join(self.new_dir, back_info.stages[-1].name), self.compiler)
     
     for output in self.outputs:
       output.inputs.remove(self)
       output.inputs.append(back)
 
     self.outputs = [back]
-    self.new_dir = os.path.join(SCOUT_DIR, self.info.stages[-1].name)
+    self.new_dir = os.path.join(self.new_dir, self.info.stages[-1].name)
 
     back.inputs = [self]
     
