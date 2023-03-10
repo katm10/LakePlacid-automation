@@ -303,30 +303,28 @@ class BuildInfoNode:
     # Fix the input filetype for the back node
     back_info.inputs = [self.info.output]
 
-    back = BuildInfoNode(back_info, [], self.outputs, os.path.join(self.new_dir, back_info.stages[-1].name), self.compiler)
+    back = BuildInfoNode(back_info, [], self.outputs, os.path.join(self.new_dir), self.compiler)
     
     for output in self.outputs:
       output.inputs.remove(self)
       output.inputs.append(back)
 
     self.outputs = [back]
-    self.new_dir = os.path.join(self.new_dir, self.info.stages[-1].name)
+    self.new_dir = os.path.join(os.path.split(self.new_dir)[0], self.info.stages[-1].name)
 
     back.inputs = [self]
     
     return back
 
 class CompilationInfo:
-  def __init__(self, compiler, argv=None):
-    self.compiler = compiler
-    self.argv = argv
-
-    self.rel_dir = os.path.normpath(os.path.relpath(os.getcwd(), ROOT_DIR))
+  def __init__(self, command=None):
     self.args = CompilationInfo.empty_args()
     self.inputs = []
-    if argv:
+    if command:
+      path, self.compiler, *self.argv = command.split(" ")
+      self.rel_dir = os.path.normpath(os.path.relpath(path, ROOT_DIR))
       self.last_stage = GCCStage.LINK
-      self.parse(argv)
+      self.parse(self.argv)
       self.first_stage = self.get_first_stage()
 
       if self.first_stage != self.last_stage:
@@ -378,7 +376,7 @@ class CompilationInfo:
 
   @staticmethod
   def from_json(json_obj):
-    info = CompilationInfo(json_obj["compiler"])
+    info = CompilationInfo()
     info.rel_dir = json_obj["rel_dir"]
     info.inputs = json_obj["inputs"]
     info.output = json_obj["output"]

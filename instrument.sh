@@ -55,6 +55,7 @@ rm -rf $LP_DIR/modified/
 rm -rf $LP_DIR/bin/
 
 if [ $make_compilationinfo = true ]; then
+  rm $LP_DIR/compilation_commands.txt
   rm $LP_DIR/compilation_info.json
 fi
 

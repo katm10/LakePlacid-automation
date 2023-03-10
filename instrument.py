@@ -1,7 +1,22 @@
 import argparse
-from build_info import BuildInfoDAG
+import json
+from build_info import BuildInfoDAG, CompilationInfo
 from bin.paths import *
 from gcc_options import GCCStage
+
+def generate_compilation_info():
+  compilation_info = {}
+  with open(TXT_PATH, "r") as f:
+    lines = f.readlines()
+    for line in lines:
+      info = CompilationInfo(line)
+      if info.output in compilation_info.keys():
+        raise Exception(info.output + " already exists")
+      
+      compilation_info[info.output] = info.to_json()
+
+  with open(JSON_PATH, "w") as f:
+    json.dump(compilation_info, f, indent=2)
 
 def main():
   parser = argparse.ArgumentParser()
@@ -12,6 +27,8 @@ def main():
   parser.add_argument('-p', '--print-only', action='store_true')
   args = parser.parse_args()
 
+  # Convert the compilation calls to arg objects
+  generate_compilation_info()
 
   if args.no_instrumentation:
     dag = BuildInfoDAG(args.applications, UNMODIFIED_DIR)
