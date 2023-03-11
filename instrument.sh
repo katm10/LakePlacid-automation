@@ -51,9 +51,11 @@ PATH="$LP_DIR/dropins:$PATH"
 
 # clean up previous instrumentation
 rm -rf $LP_DIR/scouting/
+rm -rf $LP_DIR/modified/
 rm -rf $LP_DIR/bin/
 
 if [ $make_compilationinfo = true ]; then
+  rm $LP_DIR/compilation_commands.txt
   rm $LP_DIR/compilation_info.json
 fi
 
@@ -78,7 +80,7 @@ fi
 PATH=$OLD_PATH
 
 # using the build args, run the instrumentation
-python3 $LP_DIR/instrument.py ${apps[@]} $flags
+python3 $LP_DIR/instrument.py ${apps[@]} -t $flags
 
 echo "Done!"
 
