@@ -320,6 +320,8 @@ class CompilationInfo:
   def __init__(self, command=None):
     self.args = CompilationInfo.empty_args()
     self.inputs = []
+    self.output = None
+    self.compiler = None
     if command:
       path, self.compiler, *self.argv = command.split(" ")
       self.rel_dir = os.path.normpath(os.path.relpath(path, ROOT_DIR))

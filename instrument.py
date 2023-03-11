@@ -10,9 +10,12 @@ def generate_compilation_info():
     lines = f.readlines()
     for line in lines:
       info = CompilationInfo(line)
+      if info.output is None:
+          # TODO: this is kinda jank :/
+          print(f"WARNING: No output found for command:\n{line}\nSkipping...")
+          continue
       if info.output in compilation_info.keys():
-        raise Exception(info.output + " already exists")
-      
+          print(f"WARNING: {info.output} already exists! Overwriting...")
       compilation_info[info.output] = info.to_json()
 
   with open(JSON_PATH, "w") as f:
