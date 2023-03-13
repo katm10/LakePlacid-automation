@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-python3 $LP_DIR/get_moves.py $@
-mv $@
-
