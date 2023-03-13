@@ -1,151 +1,64 @@
-import sys
 import argparse
 import json
-import os
-import subprocess
-from compilation_info import CompilationInfo
+from build_info import BuildInfoDAG, CompilationInfo
 from bin.paths import *
+from gcc_options import GCCStage
 
-def preprocess(compile_commands):
-  compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang" # TODO: seems reasonable to just require clang as a dep?
-  input_dir = ROOT_DIR
-  output_dir = PREPROCESS_DIR
- 
-  # with open(os.path.join(BASE_DIR, "name_changes.json")) as f:
-  #   name_map = json.load(f)
 
-  for entry in compile_commands:
-    input = os.path.join(input_dir, entry.inputs[0])
-    if not os.path.exists(input):
-        print(f"{input} does not exist")
-        pass
+def gen_compilation_info_json():
+    compilation_info = {}
+    with open(TXT_PATH, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            info = CompilationInfo(line)
 
-    output = os.path.join(output_dir, entry.inputs[0])
-    if not os.path.exists(os.path.dirname(output)):
-      os.makedirs(os.path.dirname(output), exist_ok=True)
+            if info.output is None:
+                print(f"WARNING: No output found for command:\n{line}\nSkipping...")
+                continue
+            if info.output in compilation_info.keys():
+                print(f"WARNING: {info.output} already exists! Overwriting...")
 
-    command = [compiler]
-    command.extend(entry.get_preprocessor_args())
-    command.extend(entry.get_unspecified_args())
-    command.extend(["-E", f"{input}"])
+            compilation_info[info.output] = info.to_json()
 
-    print(command)
+    with open(JSON_PATH, "w") as f:
+        json.dump(compilation_info, f, indent=2)
 
-    with open(output, "w") as f:
-      subprocess.run(command, stdout=f, cwd=output_dir)
-
-def instrument(compile_commands):
-  compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace"
-  input_dir = os.path.join(SCOUT_DIR, PREPROCESS_DIR)
-  output_dir = os.path.join(SCOUT_DIR, INSTRUMENT_DIR)
-
-  for entry in compile_commands:
-    input = os.path.join(input_dir, entry.inputs[0])
-    if not os.path.exists(input):
-        print(f"{input} does not exist")
-        pass
-    output = os.path.join(output_dir, entry.inputs[0])
-    if not os.path.exists(os.path.dirname(output)):
-      os.makedirs(os.path.dirname(output), exist_ok=True)
-
-    command = [compiler, f"{input}", "--"]
-    with open(output, "w") as f:
-      subprocess.run(command, stdout=f)
-
-def compile(compile_commands):
-  compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang"
-  input_dir = os.path.join(SCOUT_DIR, INSTRUMENT_DIR)
-  output_dir = os.path.join(SCOUT_DIR, COMPILE_DIR)
-
-  for entry in compile_commands:
-    input = os.path.join(input_dir, entry.inputs[0])
-    if not os.path.exists(input):
-        print(f"{input} does not exist")
-        pass
-    output = os.path.join(output_dir, entry.output)
-    if not os.path.exists(os.path.dirname(output)):
-      os.makedirs(os.path.dirname(output), exist_ok=True)
-
-    command = [compiler]
-    command.extend(entry.get_compiler_args(input_dir))
-    command.extend(entry.get_unspecified_args(input_dir))
-    command.extend(["-c", f"{input}", "-fPIC", "-o", f"{output}"])
-    
-    print(command)
-    subprocess.run(command)
-
-def link(linking_commands):
-  compiler = "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang" # TODO: do we need to use gcc?
-  input_dir = os.path.join(SCOUT_DIR, COMPILE_DIR)
-  output_dir = os.path.join(SCOUT_DIR, OUTPUT_DIR)
-
-  for entry in linking_commands:
-    output = os.path.join(output_dir, entry.output)
-    if not os.path.exists(os.path.dirname(output)):
-      os.makedirs(os.path.dirname(output), exist_ok=True)
-
-    command = [compiler]
-    command.extend(entry.get_linker_args(input_dir))
-    command.extend(entry.get_unspecified_args(input_dir))
-    command.extend(["-o", f"{output}"])
-    command.extend([f"{input_dir}/{input}" for input in entry.inputs])
-    command.extend([os.path.join(LP_DIR, "support", "trace_support.c"), "-lpthread", "-levent"])
-
-    subprocess.Popen(command)
-    # print(command)
 
 def main():
-  parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "applications", nargs="*", default=None, help="Application(s) to build"
+    )
+    parser.add_argument("-n", "--no-instrumentation", action="store_true")
+    parser.add_argument("-t", "--extract-trace", action="store_true")
+    parser.add_argument("-s", "--specialize", action="store_true")
+    parser.add_argument("-p", "--print-only", action="store_true")
+    args = parser.parse_args()
 
-  parser.add_argument('-p', '--preprocess', action='store_true')
-  parser.add_argument('-i', '--instrument', action='store_true')
-  parser.add_argument('-c', '--compile', action='store_true')
-  parser.add_argument('-l', '--link', action='store_true')
-  parser.add_argument('-a', '--all', action='store_true')
-  parser.add_argument('-n', '--no-instrumentation', action='store_true')
+    # Convert the compilation calls to arg objects
+    if not os.path.exists(JSON_PATH):
+        gen_compilation_info_json()
 
-  args = parser.parse_args()
+    if args.no_instrumentation:
+        dag = BuildInfoDAG.construct_from_json(os.path.join(LP_DIR, "uninstrumented"), args.applications)
+    elif args.extract_trace:
+        dag = BuildInfoDAG.construct_from_json(os.path.join(LP_DIR, "extract_trace"), args.applications)
+        dag.set_compiler(
+            "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang"
+        )
+        dag.insert(
+            GCCStage.COMPILE,
+            "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace",
+            "extract-trace",
+        )
+    elif args.specialize:
+        # TODO: implement this!
+        pass
+    else:
+        print("please specify the type of instrumentation")
 
-  compile_commands = []
-  link_commands = []
-  with open(JSON_PATH, "r") as f:
-    info = json.load(f)
-    for command in info["compilation"]:
-      compilation_info = CompilationInfo()
-      compilation_info.from_json(command)
-      compile_commands.append(compilation_info)
-    for command in info["linking"]:
-      compilation_info = CompilationInfo()
-      compilation_info.from_json(command)
-      link_commands.append(compilation_info)
+    dag.build(args.print_only)
 
-  scouting_dirs = [SCOUT_DIR, PREPROCESS_DIR, INSTRUMENT_DIR, COMPILE_DIR, OUTPUT_DIR]
-  for dir in scouting_dirs:
-    if not os.path.exists(dir):
-      os.mkdir(dir)
-
-  if args.no_instrumentation:
-    # TODO: implement me!
-    return
-  
-  if args.preprocess or args.all:
-    if not os.path.exists(PREPROCESS_DIR):
-      os.mkdir(PREPROCESS_DIR)
-    preprocess(compile_commands)
-  if args.instrument or args.all:
-    if not os.path.exists(INSTRUMENT_DIR):
-      os.mkdir(INSTRUMENT_DIR)
-    instrument(compile_commands)
-  if args.compile or args.all:
-    if not os.path.exists(COMPILE_DIR):
-      os.mkdir(COMPILE_DIR)
-    compile(compile_commands)
-  if args.link or args.all:
-    if not os.path.exists(OUTPUT_DIR):
-      os.mkdir(OUTPUT_DIR)
-    link(link_commands)
 
 if __name__ == "__main__":
-  main()
-
-
+    main()

@@ -1,11 +1,13 @@
-source files.sh
+source scripts/m.sh
 
-sp=instrumented
-op=instrumented_compiled
+sp=esrc
+op=objs/src
 
-CFLAGS=" -g -O2 -pthread -pthread -Wall -Werror -pedantic -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -fPIC"
+if [[ $1 != "" ]]; then
+	srcs=$1;
+fi
 
-for i in $modules; do
-        /data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang -c $CFLAGS $sp/$i.c -o $op/$i.o
-       #echo  ~/scratch/mpns_clang/build/bin/clang -c $CFLAGS $sp/$i.c -o $op/$i.o
+for i in $srcs; do
+	echo $i
+	~/scratch/mpns_clang/build/bin/clang -c -O -g $sp/$i.c -o $op/$i.o	
 done

@@ -7,13 +7,17 @@ instrumented_compiled/
 preprocessed/
 scouting/
 bin/
+tracing/
+
+# I've added some test scripts around the place
+local_*
 
 # might change this, but all .txt and .json files are likely generated
 *.txt
 *.json
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
+*/__pycache__/
 *.py[cod]
 *$py.class
 
