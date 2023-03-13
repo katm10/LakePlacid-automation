@@ -550,7 +550,7 @@ class BuildInfoDAG:
                     input.outputs = [instrument_node]
 
             else:
-                nodes.update(node.outputs)
+                nodes.extend(node.outputs)
         pass
 
     def move(self, abs_src, abs_dst):
