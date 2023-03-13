@@ -1,9 +1,11 @@
-source files.sh
+source scripts/m.sh
+sp=psrc
+op=esrc
+if [[ $1 != "" ]]; then
+	srcs=$1;
+fi
 
-sp=preprocessed
-op=instrumented
-
-
-for i in $modules; do
- 	/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace $sp/$i.c -- > $op/$i.c
+for i in $srcs; do
+	echo $i
+	~/scratch/mpns_clang/build/bin/extract-trace $sp/$i.c -- > $op/$i.c
 done
