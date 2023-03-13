@@ -354,10 +354,10 @@ class BuildInfoNode:
 
         # Fix the output filetype for the front node
         output_file, _ = os.path.splitext(self.info.output)
-        front_info_output = output_file + stage_to_type[self.info.stages[-1]]
+        front_info_output = output_file + stage_to_type[front_info_stages[-1]]
 
         # Fix the input filetype for the back node
-        back_info_inputs = [self.info.output]
+        back_info_inputs = [front_info_output]
 
         back_info = CompilationInfo(
             args=self.info.args,
@@ -378,7 +378,7 @@ class BuildInfoNode:
         )
 
         back = BuildInfoNode(
-            back_info, [], self.outputs, os.path.join(self.new_dir), self.compiler
+            back_info, [self], self.outputs, os.path.join(self.new_dir), self.compiler
         )
 
         self.info = front_info
@@ -391,8 +391,6 @@ class BuildInfoNode:
         self.new_dir = os.path.join(
             os.path.split(self.new_dir)[0], self.info.stages[-1].name
         )
-
-        back.inputs = [self]
 
         return back
 
