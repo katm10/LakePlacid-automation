@@ -1,6 +1,6 @@
 import argparse
 import json
-from build_info import BuildInfoDAG, CompilationInfo
+from build_info import BuildInfoDAG, CompilationInfo, Insertion
 from bin.paths import *
 from gcc_options import GCCStage
 
@@ -47,13 +47,29 @@ def main():
             "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang"
         )
         dag.insert(
-            GCCStage.COMPILE,
-            "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace",
-            "extract-trace",
+            Insertion(
+              stage=GCCStage.COMPILE,
+              command="/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace $INPUT --",
+              name="extract-trace",
+              inputs=[]
+            )
         )
+        dag.add_args(GCCStage.ASSEMBLE, "-Wno-constant-logical-operand -fPIC")
+        dag.add_args(GCCStage.LINK, "-lpthread -lpevent")
+        dag.add_inputs(GCCStage.LINK, [os.path.join(LP_DIR, "support", "trace_support.c")])
+
     elif args.specialize:
-        # TODO: implement this!
-        pass
+        dag = BuildInfoDAG.construct_from_json(os.path.join(LP_DIR, "specialized"), args.applications)
+        dag.set_compiler(
+            "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang"
+        )
+        # Apply manifest
+        dag.insert(GCCStage.COMPILE, '/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/apply-manifest $SOURCE $1 $INPUT --extra-arg="Wno-everything" --', "apply-manifest")
+        dag.insert(GCCStage.COMPILE, "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/patch_globals", "patch-globals")
+        dag.insert(GCCStage.COMPILE, "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/patch_functions", "patch-functions")
+
+        dag.add_args(GCCStage.ASSEMBLE, "-fno-pic -mno-sse -mcmodel=kernel -c -O3")
+        dag.add_inputs(GCCStage.LINK, [os.path.join(LP_DIR, "support", "mpns_support.c"), os.path.join(LP_DIR, "gen", "globals.o"), os.path.join(LP_DIR, "gen", "local_table.o")])
     else:
         print("please specify the type of instrumentation")
 
