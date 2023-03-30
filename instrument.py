@@ -10,7 +10,7 @@ def gen_compilation_info_json():
     with open(TXT_PATH, "r") as f:
         lines = f.readlines()
         for line in lines:
-            info = CompilationInfo(line)
+            info = CompilationInfo.construct(line)
 
             if info.output is None:
                 print(f"WARNING: No output found for command:\n{line}\nSkipping...")

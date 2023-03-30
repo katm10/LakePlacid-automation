@@ -102,8 +102,6 @@ class CompilationInfo:
             compiler=compiler,
             rel_dir=rel_dir,
             stages=[],
-            first_stage=None,
-            last_stage=GCCStage.LINK,
         )
 
         compilation_info.parse(argv)
