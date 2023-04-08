@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+python3 $LP_DIR/get_args.py $(pwd) ${COMPILER} $@
+${ORIGINAL} $@ -DCOMPILEDATA
