@@ -41,32 +41,49 @@ if [ -z "$src" ]; then
   display_usage
 fi
 
+# define the paths to the instrumentation files
 export ROOT_DIR=$(realpath $src)
 export LP_DIR=$ROOT_DIR/instrumentation
+export JSON_PATH=$LP_DIR/compilation_info.json
+export TXT_PATH=$LP_DIR/compilation_commands.txt
 export BIN=$LP_DIR/bin
-
-# Now our dropin replacements for C compilers and mv should be invoked on the first build
-OLD_PATH=$PATH
-PATH="$LP_DIR/dropins:$PATH"
 
 # clean up previous instrumentation
 rm -rf $LP_DIR/scouting/
 rm -rf $LP_DIR/modified/
 rm -rf $LP_DIR/bin/
 
-if [ $make_compilationinfo = true ]; then
-  rm $LP_DIR/compilation_commands.txt
-  rm $LP_DIR/compilation_info.json
-fi
-
-# provide the correct paths to the python files
-mkdir -p $BIN
+# Provide the correct paths to the python files and generate dropins for the C compilers
+mkdir $BIN
 test -f $BIN/paths.py || touch $BIN/paths.py
-sed -e s?\$\{ROOT_DIR\}?${ROOT_DIR}?g -e s?\$\{LP_DIR\}?${LP_DIR}?g  ${LP_DIR}/paths.py > ${LP_DIR}/bin/paths.py
+for path in ROOT_DIR LP_DIR JSON_PATH TXT_PATH BIN; do
+  echo "${path}=\"${!path}\".strip().rstrip('/')" >> $BIN/paths.py
+done
+
+mkdir $BIN/dropins
+for compiler in gcc cc clang tcc; do
+  test -f $BIN/dropins/$compiler || touch $BIN/dropins/$compiler
+  original=$(which $compiler)
+  if [ -z "$original" ]; then
+    echo "Could not find $compiler, skipping"
+    continue
+  fi
+  sed -e s?\$\{COMPILER\}?$compiler?g -e s?\$\{ORIGINAL\}?${original}?g  ${LP_DIR}/dropin_template > ${LP_DIR}/bin/dropins/$compiler
+  chmod +x ${LP_DIR}/bin/dropins/$compiler
+done
+
 
 # run the initial build to collect the build args
 if [ $make_compilationinfo = true ]; then
+  # clean up previous compilation info
+  rm $LP_DIR/compilation_commands.txt
+  rm $LP_DIR/compilation_info.json
   make clean -C $ROOT_DIR 
+
+  # our dropin replacements for C compilers and mv should be invoked on the first build
+  OLD_PATH=$PATH
+  PATH="$LP_DIR/bin/dropins:$PATH"
+
   if [ ${#apps[@]} -eq 0 ]; then
     make -C $ROOT_DIR
   else
@@ -74,10 +91,10 @@ if [ $make_compilationinfo = true ]; then
       make $app -C $ROOT_DIR
     done
   fi
-fi
 
-# We don't need to instrument the result, so we can remove the dropins
-PATH=$OLD_PATH
+  # We don't need to instrument the result, so we can remove the dropins
+  PATH=$OLD_PATH
+fi
 
 # using the build args, run the instrumentation
 python3 $LP_DIR/instrument.py ${apps[@]} -t $flags

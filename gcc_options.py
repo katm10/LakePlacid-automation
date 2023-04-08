@@ -16,6 +16,7 @@ GCCStage = Enum(
 )
 InputType = Enum("InputType", ["FILE", "DIR", "OTHER", "NONE"])
 
+
 @dataclass
 class GCCOptionInfo:
     option: str
@@ -24,6 +25,7 @@ class GCCOptionInfo:
     arg_separator: str
     input_type: InputType
     stage: GCCStage
+
 
 GCCOptionInfos = [
     # Overall
@@ -98,6 +100,7 @@ GCCOptionInfos = [
     GCCOptionInfo("L", False, True, " ", InputType.NONE, GCCStage.UNSPECIFIED),
     GCCOptionInfo("specs", False, True, " ", InputType.NONE, GCCStage.UNSPECIFIED),
 ]
+
 
 @dataclass
 class GCCOption:

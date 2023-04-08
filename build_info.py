@@ -56,7 +56,7 @@ def get_stage_from_inputs(inputs):
 
     if len(inputs) == 0:
         return GCCStage.UNSPECIFIED
-    
+
     stage = ext_to_stage[inputs[0].split(".")[-1]]
     for input in inputs:
         if ext_to_stage[input.split(".")[-1]] != stage:
@@ -65,14 +65,16 @@ def get_stage_from_inputs(inputs):
 
     return stage
 
+
 @dataclass
 class Insertion:
     stage: GCCStage
     command: str
     name: str
-    # stdout: str = 
+    # stdout: str =
     # stderr: str
     inputs: List[str]
+
 
 @dataclass
 class CompilationInfo:

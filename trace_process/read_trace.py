@@ -29,9 +29,10 @@ def read_trace_dir(dirname):
     for fname in os.listdir(dirname):
         fname = dirname + "/" + fname
         if os.path.isfile(fname):
-            trace, functions = (read_trace(fname, functions))
+            trace, functions = read_trace(fname, functions)
             traces.append(trace)
     return traces, functions
+
 
 def read_trace_dir_old(dirname):
     trace = {}

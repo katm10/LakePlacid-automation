@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo $(pwd) ${COMPILER} $@ >> $LP_DIR/compilation_commands.txt
+${ORIGINAL} $@ -DCOMPILEDATA
