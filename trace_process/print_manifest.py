@@ -50,6 +50,7 @@ def print_manifest_old(trace):
 def trace_equals(tr1, tr2):
     return tr1["branches"] == tr2["branches"]
 
+
 def get_traces(traces):
     trace_types = []
 
@@ -78,8 +79,11 @@ def get_traces(traces):
         satisfied += trace_types[i][1]
         i += 1
 
-    print(f"Satisfied {satisfied} out of {len(traces)} for {satisfied/len(traces)*100}%")
+    print(
+        f"Satisfied {satisfied} out of {len(traces)} for {satisfied/len(traces)*100}%"
+    )
     return [trace_type for trace_type, _ in trace_types[:i]]
+
 
 def print_manifest(traces, functions):
     traces = get_traces(traces)
@@ -106,20 +110,21 @@ def print_manifest(traces, functions):
     for f in functions:
         print(f + " 0 0")
 
-    branch_res = [0,0,0]
+    branch_res = [0, 0, 0]
     for f, branches in combined_trace.items():
         print(f + " " + str(1 + max(branches.keys())) + " " + str(len(branches)))
         for offset, value in branches.items():
             print(f"{offset} {value}")
             branch_res[value] += 1
-    
+
     # Some metrics
     total_branches = sum(max(b.keys()) for _, b in combined_trace.items())
-    print("METRICS:\ntotal branches:{}\nlikely:{}\nunlikely:{}\nunknown:{}"\
-            .format(total_branches, 
-                    branch_res[0], 
-                    branch_res[1],
-                    branch_res[2]))
+    print(
+        "METRICS:\ntotal branches:{}\nlikely:{}\nunlikely:{}\nunknown:{}".format(
+            total_branches, branch_res[0], branch_res[1], branch_res[2]
+        )
+    )
+
 
 def main():
     if len(sys.argv) < 2:
@@ -127,7 +132,7 @@ def main():
         exit(1)
 
     t1 = perf_counter()
-    print_manifest_old(read_trace.read_trace_dir_old(sys.argv[1])) 
+    print_manifest_old(read_trace.read_trace_dir_old(sys.argv[1]))
     t2 = perf_counter()
     traces, functions = read_trace.read_trace_dir(sys.argv[1])
     print_manifest(traces, functions)
@@ -135,6 +140,7 @@ def main():
 
     print(f"Old method: {t2 - t1}")
     print(f"New method: {t3 - t2}")
+
 
 if __name__ == "__main__":
     main()

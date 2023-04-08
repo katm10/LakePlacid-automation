@@ -56,7 +56,7 @@ def get_stage_from_inputs(inputs):
 
     if len(inputs) == 0:
         return GCCStage.UNSPECIFIED
-    
+
     stage = ext_to_stage[inputs[0].split(".")[-1]]
     for input in inputs:
         if ext_to_stage[input.split(".")[-1]] != stage:
@@ -65,14 +65,16 @@ def get_stage_from_inputs(inputs):
 
     return stage
 
+
 @dataclass
 class Insertion:
     stage: GCCStage
     command: str
     name: str
-    # stdout: str = 
+    # stdout: str =
     # stderr: str
     inputs: List[str]
+
 
 @dataclass
 class CompilationInfo:
@@ -159,8 +161,8 @@ class CompilationInfo:
             return
 
         if first_stage == GCCStage.UNSPECIFIED:
-            return 
-        
+            return
+
         stages = [
             GCCStage.PREPROCESS,
             GCCStage.COMPILE,
@@ -549,7 +551,9 @@ class BuildInfoDAG:
 
                 for i, input in enumerate(insertion.inputs):
                     insertion.command.replace(f"${i+1}", input)
-                insertion.command.replace("$SOURCE", os.path.join(ROOT_DIR, node.info.rel_dir, file + ".c"))
+                insertion.command.replace(
+                    "$SOURCE", os.path.join(ROOT_DIR, node.info.rel_dir, file + ".c")
+                )
                 insertion.command.replace("$INPUT", node.info.inputs[0])
 
                 info = CompilationInfo.construct(insertion.command)
