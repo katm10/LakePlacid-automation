@@ -42,14 +42,14 @@ def main():
     if args.no_instrumentation:
         dag = BuildInfoDAG.construct_from_json(os.path.join(LP_DIR, "uninstrumented"), args.applications)
     elif args.extract_trace:
-        dag = BuildInfoDAG.construct_from_json(os.path.join(LP_DIR, "extract_trace"), args.applications)
+        dag = BuildInfoDAG.construct_from_json(os.path.join(LP_DIR, "extract_trace_new"), args.applications)
         dag.set_compiler(
             "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang"
         )
         dag.insert(
             Insertion(
               stage=GCCStage.COMPILE,
-              command="/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace $INPUT --",
+              command="/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace $SOURCE $INPUT --",
               name="extract-trace",
               inputs=[]
             )

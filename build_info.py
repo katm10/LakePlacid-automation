@@ -159,8 +159,8 @@ class CompilationInfo:
             return
 
         if first_stage == GCCStage.UNSPECIFIED:
-            return 
-        
+            return
+
         stages = [
             GCCStage.PREPROCESS,
             GCCStage.COMPILE,
@@ -245,6 +245,7 @@ class BuildInfoNode:
     outputs: List["BuildInfoNode"]
     new_dir: str
     compiler: str
+    insertion: Insertion = None
     built: bool = False
 
     def ready(self):
@@ -290,11 +291,8 @@ class BuildInfoNode:
             command.extend(["-E", inputs[0]])
 
         elif self.info.stages[-1] == GCCStage.INSTRUMENT:
-            assert len(inputs) == 1
-            original_info = self.inputs[0].info
-            assert len(original_info.inputs) == 1
-            original_path = os.path.join(ROOT_DIR, original_info.inputs[0])
-            command.extend([original_path, inputs[0], "--"])
+            assert self.insertion is not None
+            command = self.insertion.command.split(" ")
 
         elif self.info.stages[-1] == GCCStage.COMPILE:
             assert len(inputs) == 1
@@ -548,9 +546,11 @@ class BuildInfoDAG:
                 file, _ = os.path.splitext(node.info.output)
 
                 for i, input in enumerate(insertion.inputs):
-                    insertion.command.replace(f"${i+1}", input)
-                insertion.command.replace("$SOURCE", os.path.join(ROOT_DIR, node.info.rel_dir, file + ".c"))
-                insertion.command.replace("$INPUT", node.info.inputs[0])
+                    insertion.command = insertion.command.replace(f"${i+1}", input)
+
+                insertion.command = insertion.command\
+                    .replace("$SOURCE", os.path.join(ROOT_DIR, node.info.rel_dir, file + ".c"))\
+                    .replace("$INPUT", node.inputs[0].get_output_path())
 
                 info = CompilationInfo.construct(insertion.command)
                 info.output = os.path.join(insertion.name + "_" + file + ".c")
@@ -562,6 +562,7 @@ class BuildInfoDAG:
                     [node],
                     os.path.join(self.output_dir, info.stages[-1].name),
                     info.compiler,
+                    insertion
                 )
                 node.inputs = [instrument_node]
                 node.info.inputs = [info.output]

@@ -1,6 +1,10 @@
 # compilers take up too much space
 compilers/
 
+# application dependent things
+client/
+syslog.conf
+
 # don't need intermediates
 instrumented/
 instrumented_compiled/
@@ -8,6 +12,7 @@ preprocessed/
 scouting/
 bin/
 tracing/
+extract_trace*
 
 # I've added some test scripts around the place
 local_*
