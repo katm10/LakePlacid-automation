@@ -44,6 +44,7 @@ def main():
         dag = BuildInfoDAG.construct_from_json(
             os.path.join(LP_DIR, "uninstrumented"), args.applications
         )
+        dag.add_args(GCCStage.PREPROCESS, "-DCOMPILEDATA")
     elif args.extract_trace:
         dag = BuildInfoDAG.construct_from_json(
             os.path.join(LP_DIR, "extract_trace_new"), args.applications
@@ -60,7 +61,7 @@ def main():
             )
         )
         dag.add_args(GCCStage.ASSEMBLE, "-Wno-constant-logical-operand -fPIC")
-        dag.add_args(GCCStage.LINK, "-lpthread -lpevent")
+        dag.add_args(GCCStage.LINK, "-lpthread -levent")
         dag.add_inputs(
             GCCStage.LINK, [os.path.join(LP_DIR, "support", "trace_support.c")]
         )
