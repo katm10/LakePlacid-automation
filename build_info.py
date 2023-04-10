@@ -233,11 +233,9 @@ class CompilationInfo:
         return args
 
     def add_args(self, stage: GCCStage, args: List[GCCOption]):
-        print("adding args", args)
         self.args[stage.name].extend(args)
 
     def add_inputs(self, inputs: List[str]):
-        print("adding inputs", inputs)
         self.inputs.extend(inputs)
 
 
@@ -302,7 +300,6 @@ class BuildInfoNode:
 
         elif self.info.stages[-1] == GCCStage.INSTRUMENT:
             assert self.insertion is not None
-            print(self.get_output_path())
             command = self.insertion.command.split(" ")
 
         elif self.info.stages[-1] == GCCStage.COMPILE:
@@ -560,12 +557,9 @@ class BuildInfoDAG:
                 for i, input in enumerate(insertion.inputs):
                     replaced_command = replaced_command.replace(f"${i+1}", input)
 
-                replaced_command = reduce(lambda s,r: s.replace(*r),
-                   [("$SOURCE", node.get_source()),
-                    ("$INPUT", node.inputs[0].get_output_path())],
-                   replaced_command)
-
-                print(replaced_command)
+                replaced_command = replaced_command.replace("$SOURCE", node.get_source()) \
+                                                   .replace("$INPUT",
+                                                           node.inputs[0].get_output_path())
 
                 replaced_insertion = copy.copy(insertion)
                 replaced_insertion.command = replaced_command

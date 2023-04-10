@@ -62,12 +62,12 @@ done
 
 mkdir $BIN/dropins
 for compiler in gcc cc clang tcc; do
-  test -f $BIN/dropins/$compiler || touch $BIN/dropins/$compiler
   original=$(which $compiler)
   if [ -z "$original" ]; then
     echo "Could not find $compiler, skipping"
     continue
   fi
+  test -f $BIN/dropins/$compiler || touch $BIN/dropins/$compiler
   sed -e s?\$\{COMPILER\}?$compiler?g -e s?\$\{ORIGINAL\}?${original}?g  ${LP_DIR}/dropin_template > ${LP_DIR}/bin/dropins/$compiler
   chmod +x ${LP_DIR}/bin/dropins/$compiler
 done
