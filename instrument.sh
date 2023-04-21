@@ -97,7 +97,7 @@ if [ $make_compilationinfo = true ]; then
 fi
 
 # using the build args, run the instrumentation
-python3 $LP_DIR/instrument.py ${apps[@]} -t $flags
+python3 $LP_DIR/instrument.py ${apps[@]} -s $flags
 
 echo "Done!"
 

@@ -53,6 +53,7 @@ def get_stage_from_inputs(inputs):
         "o": GCCStage.LINK,
         "so": GCCStage.LINK,
         "a": GCCStage.LINK,
+        "txt": GCCStage.INSTRUMENT,
     }
 
     if len(inputs) == 0:
@@ -210,7 +211,7 @@ class CompilationInfo:
 
     def get_args_as_list(self, stage):
         args = []
-        for arg in self.args[stage.name]:
+        for arg in self.args.get(stage.name, []):
             if arg.target is not None:
                 if arg.target_type == InputType.FILE:
                     arg.target = os.path.join(ROOT_DIR, self.rel_dir, arg.target)
@@ -233,7 +234,7 @@ class CompilationInfo:
         return args
 
     def add_args(self, stage: GCCStage, args: List[GCCOption]):
-        self.args[stage.name].extend(args)
+        self.args = {stage.name: args} # TODO: don't override
 
     def add_inputs(self, inputs: List[str]):
         self.inputs.extend(inputs)
@@ -421,6 +422,7 @@ class BuildInfoDAG:
     output_dir: str
     extra_args: Dict[GCCStage, List[str]]
     extra_inputs: Dict[GCCStage, List[str]]
+    # remove_args: Dict[GCCStage, bool] = {}
 
     @staticmethod
     def construct_from_json(output_dir, applications=[], file=JSON_PATH):

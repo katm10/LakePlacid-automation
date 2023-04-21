@@ -47,7 +47,7 @@ def main():
         dag.add_args(GCCStage.PREPROCESS, "-DCOMPILEDATA")
     elif args.extract_trace:
         dag = BuildInfoDAG.construct_from_json(
-            os.path.join(LP_DIR, "extract_trace_new"), args.applications
+            os.path.join(LP_DIR, "extract_trace"), args.applications
         )
         dag.set_compiler(
             "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang"
@@ -65,8 +65,11 @@ def main():
         dag.add_inputs(
             GCCStage.LINK, [os.path.join(LP_DIR, "support", "trace_support.c")]
         )
-
     elif args.specialize:
+
+        # grab the functions out of the manifest TODO: I could just generate both of these at once? 
+
+
         dag = BuildInfoDAG.construct_from_json(
             os.path.join(LP_DIR, "specialized"), args.applications
         )
@@ -75,19 +78,28 @@ def main():
         )
         # Apply manifest
         dag.insert(
-            GCCStage.COMPILE,
-            '/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/apply-manifest $SOURCE $1 $INPUT --extra-arg="Wno-everything" --',
-            "apply-manifest",
+            Insertion(
+                GCCStage.COMPILE,
+                '/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/apply-manifest $SOURCE $1 $INPUT --',
+                "apply-manifest",
+                ["manifest.txt"]
+            )
         )
         dag.insert(
-            GCCStage.COMPILE,
-            "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/patch_globals",
-            "patch-globals",
+            Insertion(
+                GCCStage.COMPILE,
+                "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/patch-globals $SOURCE $INPUT --",
+                "patch-globals",
+                []
+            )
         )
         dag.insert(
-            GCCStage.COMPILE,
-            "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/patch_functions",
-            "patch-functions",
+            Insertion(
+                GCCStage.COMPILE,
+                "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/patch-functions $SOURCE $INPUT --",
+                "patch-functions",
+                []
+            )
         )
 
         dag.add_args(GCCStage.ASSEMBLE, "-fno-pic -mno-sse -mcmodel=kernel -c -O3")
@@ -97,6 +109,7 @@ def main():
                 os.path.join(LP_DIR, "support", "mpns_support.c"),
                 os.path.join(LP_DIR, "gen", "globals.o"),
                 os.path.join(LP_DIR, "gen", "local_table.o"),
+                os.path.join(LP_DIR, "gen", "missing.o")
             ],
         )
     else:
