@@ -1,6 +1,5 @@
-import read_trace
 import sys
-import os
+from trace_helpers import read_trace_dir
 
 
 def main():
@@ -8,7 +7,7 @@ def main():
         print("Usage " + sys.argv[0] + " <filename>")
         exit(1)
 
-    functions = read_trace.read_trace_dir(sys.argv[1])["functions"]
+    _, functions = read_trace_dir(sys.argv[1])
     for f in functions:
         print(f)
 
