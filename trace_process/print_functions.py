@@ -8,7 +8,7 @@ def main():
         print("Usage " + sys.argv[0] + " <filename>")
         exit(1)
 
-    functions = read_trace.read_trace_dir(sys.argv[1])["functions"]
+    functions = read_trace.read_trace_dir_old(sys.argv[1])["functions"]
     for f in functions:
         print(f)
 

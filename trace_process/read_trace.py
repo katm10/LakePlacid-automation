@@ -63,6 +63,8 @@ def read_trace(fname, functions=set()):
             if fname not in trace["branches"].keys():
                 trace["branches"][fname] = {}
             if offset not in trace["branches"][fname].keys():
+                # if val > 2:
+                    # print(f"WARNING: {fname} {offset} has val {val}")
                 trace["branches"][fname][offset] = val
             else:
                 if trace["branches"][fname][offset] != val:

@@ -79,9 +79,11 @@ def get_traces(traces):
         satisfied += trace_types[i][1]
         i += 1
 
+    """
     print(
         f"Satisfied {satisfied} out of {len(traces)} for {satisfied/len(traces)*100}%"
     )
+    """
     return [trace_type for trace_type, _ in trace_types[:i]]
 
 
@@ -95,6 +97,8 @@ def print_manifest(traces, functions):
             if function not in combined_trace.keys():
                 combined_trace[function] = {}
             for offset, val in branches.items():
+                # if val > 2:
+                    # print(f"{function} at offset {offset} has value {val}")
                 if offset in combined_trace[function].keys():
                     if combined_trace[function][offset] != val:
                         combined_trace[function][offset] = 2
@@ -114,16 +118,21 @@ def print_manifest(traces, functions):
     for f, branches in combined_trace.items():
         print(f + " " + str(1 + max(branches.keys())) + " " + str(len(branches)))
         for offset, value in branches.items():
-            print(f"{offset} {value}")
+            #print(f"{offset} {value}")
+            if value > 2:
+                # print(f"WARNING: found switch (value {value})")
+                continue
             branch_res[value] += 1
 
     # Some metrics
     total_branches = sum(max(b.keys()) for _, b in combined_trace.items())
+    """
     print(
         "METRICS:\ntotal branches:{}\nlikely:{}\nunlikely:{}\nunknown:{}".format(
             total_branches, branch_res[0], branch_res[1], branch_res[2]
         )
     )
+    """
 
 
 def main():
@@ -131,15 +140,15 @@ def main():
         print("Usage " + sys.argv[0] + " <filename>")
         exit(1)
 
-    t1 = perf_counter()
+    #t1 = perf_counter()
     print_manifest_old(read_trace.read_trace_dir_old(sys.argv[1]))
-    t2 = perf_counter()
-    traces, functions = read_trace.read_trace_dir(sys.argv[1])
-    print_manifest(traces, functions)
-    t3 = perf_counter()
+    #t2 = perf_counter()
+    #traces, functions = read_trace.read_trace_dir(sys.argv[1])
+    #print_manifest(traces, functions)
+    #t3 = perf_counter()
 
-    print(f"Old method: {t2 - t1}")
-    print(f"New method: {t3 - t2}")
+    #print(f"Old method: {t2 - t1}")
+    #print(f"New method: {t3 - t2}")
 
 
 if __name__ == "__main__":
