@@ -6,6 +6,7 @@ import copy
 import subprocess
 from dataclasses import dataclass
 from typing import List, Dict, Set
+from functools import reduce
 
 """
 {
@@ -52,6 +53,7 @@ def get_stage_from_inputs(inputs):
         "o": GCCStage.LINK,
         "so": GCCStage.LINK,
         "a": GCCStage.LINK,
+        "txt": GCCStage.INSTRUMENT,
     }
 
     if len(inputs) == 0:
@@ -209,7 +211,7 @@ class CompilationInfo:
 
     def get_args_as_list(self, stage):
         args = []
-        for arg in self.args[stage.name]:
+        for arg in self.args.get(stage.name, []):
             if arg.target is not None:
                 if arg.target_type == InputType.FILE:
                     arg.target = os.path.join(ROOT_DIR, self.rel_dir, arg.target)
@@ -232,11 +234,9 @@ class CompilationInfo:
         return args
 
     def add_args(self, stage: GCCStage, args: List[GCCOption]):
-        print("adding args", args)
-        self.args[stage.name].extend(args)
+        self.args = {stage.name: args} # TODO: don't override
 
     def add_inputs(self, inputs: List[str]):
-        print("adding inputs", inputs)
         self.inputs.extend(inputs)
 
 
@@ -247,6 +247,7 @@ class BuildInfoNode:
     outputs: List["BuildInfoNode"]
     new_dir: str
     compiler: str
+    insertion: Insertion = None
     built: bool = False
 
     def ready(self):
@@ -258,10 +259,17 @@ class BuildInfoNode:
 
     def front(self):
         front_node = self
-        while len(front_node.inputs) == 1:
+        while len(front_node.inputs) >= 1:
+            # This only really makes sense for a chain
+            assert len(front_node.inputs) == 1
+
             front_node = front_node.inputs[0]
 
         return front_node
+
+    def get_source(self):
+        front = self.front()
+        return os.path.abspath(os.path.join(ROOT_DIR, front.info.rel_dir, front.info.inputs[0]))
 
     def get_output_path(self):
         path = os.path.join(self.new_dir, self.info.output)
@@ -292,11 +300,8 @@ class BuildInfoNode:
             command.extend(["-E", inputs[0]])
 
         elif self.info.stages[-1] == GCCStage.INSTRUMENT:
-            assert len(inputs) == 1
-            original_info = self.inputs[0].info
-            assert len(original_info.inputs) == 1
-            original_path = os.path.join(ROOT_DIR, original_info.inputs[0])
-            command.extend([original_path, inputs[0], "--"])
+            assert self.insertion is not None
+            command = self.insertion.command.split(" ")
 
         elif self.info.stages[-1] == GCCStage.COMPILE:
             assert len(inputs) == 1
@@ -383,12 +388,12 @@ class BuildInfoNode:
         )
 
         back = BuildInfoNode(
-            back_info, [self], self.outputs, os.path.join(self.new_dir), self.compiler
+            back_info, [self], copy.copy(self.outputs), os.path.join(self.new_dir), self.compiler
         )
 
         self.info = front_info
 
-        for output in self.outputs:
+        for output in back.outputs:
             output.inputs.remove(self)
             output.inputs.append(back)
 
@@ -417,6 +422,7 @@ class BuildInfoDAG:
     output_dir: str
     extra_args: Dict[GCCStage, List[str]]
     extra_inputs: Dict[GCCStage, List[str]]
+    # remove_args: Dict[GCCStage, bool] = {}
 
     @staticmethod
     def construct_from_json(output_dir, applications=[], file=JSON_PATH):
@@ -548,31 +554,37 @@ class BuildInfoDAG:
                 # - inputs
 
                 file, _ = os.path.splitext(node.info.output)
+                replaced_command = copy.copy(insertion.command)
 
                 for i, input in enumerate(insertion.inputs):
-                    insertion.command.replace(f"${i+1}", input)
-                insertion.command.replace(
-                    "$SOURCE", os.path.join(ROOT_DIR, node.info.rel_dir, file + ".c")
-                )
-                insertion.command.replace("$INPUT", node.info.inputs[0])
+                    replaced_command = replaced_command.replace(f"${i+1}", input)
 
-                info = CompilationInfo.construct(insertion.command)
-                info.output = os.path.join(insertion.name + "_" + file + ".c")
+                replaced_command = replaced_command.replace("$SOURCE", node.get_source()) \
+                                                   .replace("$INPUT",
+                                                           node.inputs[0].get_output_path())
+
+                replaced_insertion = copy.copy(insertion)
+                replaced_insertion.command = replaced_command
+
+                info = CompilationInfo.construct(replaced_command)
+                info.output = os.path.join(insertion.name, file + ".c")
                 info.stages = [GCCStage.INSTRUMENT]
+                inputs = copy.copy(node.inputs)
+                del node.inputs
 
                 instrument_node = BuildInfoNode(
                     info,
-                    copy.copy(node.inputs),
+                    inputs,
                     [node],
                     os.path.join(self.output_dir, info.stages[-1].name),
                     info.compiler,
+                    replaced_insertion
                 )
                 node.inputs = [instrument_node]
                 node.info.inputs = [info.output]
 
                 for input in instrument_node.inputs:
                     input.outputs = [instrument_node]
-
             else:
                 nodes.extend(node.outputs)
         pass
