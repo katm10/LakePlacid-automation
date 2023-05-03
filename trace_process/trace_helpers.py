@@ -4,8 +4,12 @@ from dataclasses import dataclass
 
 @dataclass
 class TraceType:
+    command: str
     count: int
     trace: dict
+
+    def __str__(self):
+        return f"command: {self.command}, count: {self.count}"
 
 
 def read_trace_dir(dirname):
@@ -68,7 +72,7 @@ def bucket_traces(traces):
 
     for trace in traces:
         if not check_types(trace):
-            trace_types.append(TraceType(1, trace))
+            trace_types.append(TraceType(trace["command"], 1, trace))
 
     assert sum(trace_type.count for trace_type in trace_types) == len(traces)
     return trace_types

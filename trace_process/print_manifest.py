@@ -46,7 +46,7 @@ def get_metrics(manifest_function, trace_types, threshold_p=0.75):
 
     result_trace = combine_traces([trace_types[i].trace for i in chosen_traces])
 
-    print(f"Chosen traces: {list(chosen_traces)}")
+    print(f"Chosen traces: {[str(trace_types[i]) for i in chosen_traces]}")
 
     # Display time
     print(f"Time: {end_time - init_time}")
@@ -99,7 +99,7 @@ def main():
     traces, functions = read_trace_dir(sys.argv[1])
     trace_types = bucket_traces(traces)
 
-    chosen_dp = get_metrics(get_traces_dp, trace_types)
+    # chosen_dp = get_metrics(get_traces_dp, trace_types)
     # print_manifest(chosen_dp, trace_types, functions)
 
     chosen_greedy = get_metrics(get_traces_greedy, trace_types)
