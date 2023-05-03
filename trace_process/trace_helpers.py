@@ -72,3 +72,20 @@ def bucket_traces(traces):
 
     assert sum(trace_type.count for trace_type in trace_types) == len(traces)
     return trace_types
+
+def combine_traces(traces):
+    # Combine the traces
+    combined_trace = {}
+    for trace in traces:
+        for function, branches in trace["branches"].items():
+            if function not in combined_trace.keys():
+                combined_trace[function] = {}
+            for offset, val in branches.items():
+                # if val > 2:
+                # print(f"{function} at offset {offset} has value {val}")
+                if offset in combined_trace[function].keys():
+                    if combined_trace[function][offset] != val:
+                        combined_trace[function][offset] = 2
+                else:
+                    combined_trace[function][offset] = val
+    return combined_trace
