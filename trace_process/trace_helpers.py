@@ -1,12 +1,27 @@
 import os
 from dataclasses import dataclass
+from enum import Enum
+from typing import List
+
+
+class BranchType(Enum):
+    LIKELY = 0
+    UNLIKELY = 1
+    UNKNOWN = 2
+    UNUSED = -1
+
+
+@dataclass
+class Trace:
+    command: str
+    branches: List[BranchType]
 
 
 @dataclass
 class TraceType:
     command: str
     count: int
-    trace: dict
+    trace: List[BranchType]
 
     def __str__(self):
         return f"command: {self.command}, count: {self.count}"
@@ -20,7 +35,8 @@ def read_trace_dir(dirname):
         if os.path.isfile(fname):
             trace, functions = read_trace(fname, functions)
             traces.append(trace)
-    return traces, functions
+
+    return preprocess_traces(traces, functions)
 
 
 def read_trace(fname, functions=set()):
@@ -51,8 +67,30 @@ def read_trace(fname, functions=set()):
     return trace, functions
 
 
-def trace_equals(tr1, tr2):
-    return tr1["branches"] == tr2["branches"]
+def preprocess_traces(traces, functions):
+    function_indices = {}
+    i = 0
+    for function in functions:
+        max_offset = 0
+        max_offsets = [
+            max(trace["branches"][function].keys())
+            for trace in traces
+            if function in trace["branches"].keys()
+        ]
+        if len(max_offsets) != 0:
+            max_offset = max(max_offsets)
+        function_indices[function] = (i, i + max_offset)
+        i += max_offset + 1
+
+    processed_traces = []
+    for trace in traces:
+        trace_array = [BranchType.UNUSED] * i
+        for function, branches in trace["branches"].items():
+            for offset, val in branches.items():
+                trace_array[function_indices[function][0] + offset] = BranchType(val)
+        processed_traces.append(Trace(trace["command"], trace_array))
+
+    return function_indices, processed_traces
 
 
 """
@@ -65,31 +103,36 @@ def bucket_traces(traces):
 
     def check_types(trace):
         for i in range(len(trace_types)):
-            if trace_equals(trace, trace_types[i].trace):
+            if trace.branches == trace_types[i].trace:
                 trace_types[i].count += 1
                 return True
         return False
 
     for trace in traces:
         if not check_types(trace):
-            trace_types.append(TraceType(trace["command"], 1, trace))
+            trace_types.append(TraceType(trace.command, 1, trace.branches))
 
     assert sum(trace_type.count for trace_type in trace_types) == len(traces)
     return trace_types
 
+
 def combine_traces(traces):
     # Combine the traces
-    combined_trace = {}
-    for trace in traces:
-        for function, branches in trace["branches"].items():
-            if function not in combined_trace.keys():
-                combined_trace[function] = {}
-            for offset, val in branches.items():
-                # if val > 2:
-                # print(f"{function} at offset {offset} has value {val}")
-                if offset in combined_trace[function].keys():
-                    if combined_trace[function][offset] != val:
-                        combined_trace[function][offset] = 2
-                else:
-                    combined_trace[function][offset] = val
+    n = len(traces[0])
+    assert all(len(trace) == n for trace in traces)
+
+    combined_trace = traces[0].copy()
+    for trace in traces[1:]:
+        for i in range(n):
+            if combined_trace[i] == BranchType.UNUSED:
+                combined_trace[i] = trace[i]
+            elif combined_trace[i] == BranchType.UNKNOWN:
+                continue
+            elif combined_trace[i] == BranchType.LIKELY:
+                if trace[i] == BranchType.UNLIKELY or trace[i] == BranchType.UNKNOWN:
+                    combined_trace[i] = BranchType.UNKNOWN
+            elif combined_trace[i] == BranchType.UNLIKELY:
+                if trace[i] == BranchType.LIKELY or trace[i] == BranchType.UNKNOWN:
+                    combined_trace[i] = BranchType.UNKNOWN
+
     return combined_trace

@@ -58,40 +58,36 @@ def get_metrics(manifest_function, trace_types, threshold_p=0.75):
     trace_length = sum(trace_type.count for trace_type in trace_types)
     print(f"Percent satisfied: {satisfied / trace_length * 100}")
 
-    # Get count of unknowns
-    branch_res = [0, 0, 0]
-    for _, branches in result_trace.items():
-        for _, value in branches.items():
-            if value > 2:
-                continue
-            branch_res[value] += 1
-
-    total_branches = sum(max(b.keys()) for _, b in result_trace.items())
     print(
-        "Branch counts:\ntotal branches:{}\nlikely:{}\nunlikely:{}\nunknown:{}".format(
-            total_branches, branch_res[0], branch_res[1], branch_res[2]
-        )
-    )
+        "Branch counts:\nlikely:{}\nunlikely:{}\nunknown:{}"
+          .format(result_trace.count(BranchType.LIKELY),
+                  result_trace.count(BranchType.UNLIKELY),
+                  result_trace.count(BranchType.UNKNOWN)))
+    
+    print("Resulting manifest:")
 
-    print(chosen_traces)
     return chosen_traces
 
 
-def print_manifest(chosen_traces, trace_types, functions):
+def print_manifest(chosen_traces, trace_types, function_indices):
     # Combine the traces
     combined_trace = combine_traces([trace_types[i].trace for i in chosen_traces])
 
-    # Figure out which functions are never used here
-    functions = set(f for f in functions if f not in combined_trace.keys())
-
     # Now print everything in the right format
-    print(len(functions) + len(combined_trace))
+    print(len(function_indices.keys()))
 
-    for f in functions:
-        print(f + " 0 0")
+    for function_name, (start_indx, end_indx) in function_indices.items():
+        branches = combined_trace[start_indx : end_indx + 1]
+        n_branches = sum(branch != BranchType.UNUSED for branch in branches)
+        if n_branches == 0:
+            print(f"{function_name} 0 0")
+        else:
+            print(f"{function_name} {len(branches)} {n_branches}")
 
-    for f, branches in combined_trace.items():
-        print(f + " " + str(1 + max(branches.keys())) + " " + str(len(branches)))
+        for i, branch in enumerate(branches):
+            if branch == BranchType.UNUSED:
+                continue
+            print(f"{i} {branch.value}")
 
 
 def main():
@@ -99,20 +95,20 @@ def main():
         print("Usage " + sys.argv[0] + " <filename>")
         exit(1)
 
-    traces, functions = read_trace_dir(sys.argv[1])
+    function_indices, traces = read_trace_dir(sys.argv[1])
     trace_types = bucket_traces(traces)
 
-    # chosen_dp = get_metrics(get_traces_dp, trace_types)
-    # print_manifest(chosen_dp, trace_types, functions)
+    chosen_dp = get_metrics(get_traces_dp, trace_types)
+    print_manifest(chosen_dp, trace_types, function_indices)
 
-    # chosen_simple = get_metrics(get_traces_greedy, trace_types)
-    # print_manifest(chosen_simple, trace_types, functions)
+    chosen_simple = get_metrics(get_traces_greedy, trace_types)
+    print_manifest(chosen_simple, trace_types, function_indices)
 
     chosen_brute = get_metrics(brute_force.get_traces, trace_types)
-    print_manifest(chosen_brute, trace_types, functions)
+    print_manifest(chosen_brute, trace_types, function_indices)
 
     chosen_greedy = get_metrics(greedy.get_traces, trace_types)
-    print_manifest(chosen_greedy, trace_types, functions)
+    print_manifest(chosen_greedy, trace_types, function_indices)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+from trace_helpers import BranchType
+
 """
 Dynamic Programming method:
 
@@ -19,7 +21,7 @@ def get_traces_dp(types, threshold=0.75):
     trace_types = types
 
     trace_length = sum(trace_type.count for trace_type in trace_types)
-    _, chosen = A(round(trace_length * threshold), len(trace_types) - 1)
+    _, chosen = A(round(trace_length * threshold), len(trace_types) - 1, [BranchType.UNUSED] * len(trace_types[0].trace))
 
     return chosen
 
@@ -30,24 +32,26 @@ See how many unknowns are added by combining Z and T_j
 
 
 def f(Z, T_j):
+    assert(len(Z) == len(T_j))
     Z = Z.copy()
     unknowns = 0
-    for function, branches in T_j["branches"].items():
-        if function not in Z.keys():
-            Z[function] = {}
-        for offset, val in branches.items():
-            if offset in Z[function].keys():
-                if Z[function][offset] != val:
-                    unknowns += 1
-                    Z[function][offset] = 2
-            else:
-                Z[function][offset] = val
-                if val == 2:
-                    unknowns += 1
+
+    for i in range(len(T_j)):
+        if Z[i] == BranchType.UNUSED:
+            Z[i] = T_j[i]
+        elif Z[i] == BranchType.UNKNOWN:
+            continue
+        elif Z[i] == BranchType.LIKELY:
+            if T_j[i] == BranchType.UNLIKELY or T_j[i] == BranchType.UNKNOWN:
+                Z[i] = BranchType.UNKNOWN
+        elif Z[i] == BranchType.UNLIKELY:
+            if T_j[i] == BranchType.LIKELY or T_j[i] == BranchType.UNKNOWN:
+                Z[i] = BranchType.UNKNOWN
+    
     return Z, unknowns
 
 
-def A(k, j, chosen=frozenset(), Z={}):
+def A(k, j, Z, chosen=frozenset()):
     global memo
 
     if (k, j, chosen) in memo.keys():
@@ -61,9 +65,9 @@ def A(k, j, chosen=frozenset(), Z={}):
     Z_with_j, unknowns_from_j = f(Z, T_j)
 
     unknowns_with_j, chosen_with_j = A(
-        k - trace_types[j].count, j - 1, chosen | {j}, Z=Z_with_j
+        k - trace_types[j].count, j - 1, Z_with_j, chosen | {j}
     )
-    unknowns_without_j, chosen_without_j = A(k, j - 1, chosen, Z=Z)
+    unknowns_without_j, chosen_without_j = A(k, j - 1, Z, chosen)
 
     unknowns_with_j += unknowns_from_j
 

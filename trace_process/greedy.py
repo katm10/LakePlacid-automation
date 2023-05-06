@@ -1,4 +1,3 @@
-
 def count_unknowns(Z, T_j):
     unknowns = 0
     for function, branches in T_j["branches"].items():
@@ -12,6 +11,7 @@ def count_unknowns(Z, T_j):
                 if val == 2:
                     unknowns += 1
     return unknowns
+
 
 def get_traces(trace_types, threshold=0.75):
     # Start with the most common trace type
