@@ -3,6 +3,8 @@ def count_unknowns(Z, T_j):
     unknowns = 0
     for function, branches in T_j["branches"].items():
         for offset, val in branches.items():
+            if function not in Z.keys():
+                Z[function] = {}
             if offset in Z[function].keys():
                 if Z[function][offset] != val:
                     unknowns += 1
@@ -20,7 +22,7 @@ def get_traces(trace_types, threshold=0.75):
     # Find the trace with the minimum # of unknowns added at each step
     trace_length = sum(trace_type.count for trace_type in trace_types)
     threshold = int(threshold * trace_length)
-    satisfied = 0
+    satisfied = trace.count
     chosen_types = [j]
     while satisfied < threshold:
         min_unknowns = float("inf")

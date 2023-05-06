@@ -1,4 +1,6 @@
 import sys
+import greedy
+import brute_force
 from top_down import get_traces_dp
 from trace_helpers import *
 from time import perf_counter
@@ -71,6 +73,7 @@ def get_metrics(manifest_function, trace_types, threshold_p=0.75):
         )
     )
 
+    print(chosen_traces)
     return chosen_traces
 
 
@@ -102,8 +105,14 @@ def main():
     # chosen_dp = get_metrics(get_traces_dp, trace_types)
     # print_manifest(chosen_dp, trace_types, functions)
 
-    chosen_greedy = get_metrics(get_traces_greedy, trace_types)
-    # print_manifest(chosen_greedy, trace_types, functions)
+    # chosen_simple = get_metrics(get_traces_greedy, trace_types)
+    # print_manifest(chosen_simple, trace_types, functions)
+
+    chosen_brute = get_metrics(brute_force.get_traces, trace_types)
+    print_manifest(chosen_brute, trace_types, functions)
+
+    chosen_greedy = get_metrics(greedy.get_traces, trace_types)
+    print_manifest(chosen_greedy, trace_types, functions)
 
 
 if __name__ == "__main__":
