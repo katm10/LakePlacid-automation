@@ -1,17 +1,18 @@
-def count_unknowns(Z, T_j):
-    unknowns = 0
-    for function, branches in T_j["branches"].items():
-        for offset, val in branches.items():
-            if function not in Z.keys():
-                Z[function] = {}
-            if offset in Z[function].keys():
-                if Z[function][offset] != val:
-                    unknowns += 1
-            else:
-                if val == 2:
-                    unknowns += 1
-    return unknowns
+from trace_helpers import BranchType
 
+def count_unknowns(Z, T_j):
+    assert(len(Z) == len(T_j))
+    unknowns = 0
+
+    for i in range(len(T_j)):
+        if Z[i] == BranchType.LIKELY:
+            if T_j[i] == BranchType.UNLIKELY or T_j[i] == BranchType.UNKNOWN:
+                unknowns += 1
+        elif Z[i] == BranchType.UNLIKELY:
+            if T_j[i] == BranchType.LIKELY or T_j[i] == BranchType.UNKNOWN:
+                unknowns += 1
+    
+    return unknowns
 
 def get_traces(trace_types, threshold=0.75):
     # Start with the most common trace type

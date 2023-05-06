@@ -43,9 +43,11 @@ def f(Z, T_j):
             continue
         elif Z[i] == BranchType.LIKELY:
             if T_j[i] == BranchType.UNLIKELY or T_j[i] == BranchType.UNKNOWN:
+                unknowns += 1
                 Z[i] = BranchType.UNKNOWN
         elif Z[i] == BranchType.UNLIKELY:
             if T_j[i] == BranchType.LIKELY or T_j[i] == BranchType.UNKNOWN:
+                unknowns += 1
                 Z[i] = BranchType.UNKNOWN
     
     return Z, unknowns
