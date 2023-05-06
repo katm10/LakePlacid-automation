@@ -54,6 +54,7 @@ def read_trace(fname, functions=set()):
             functions.add(fname)
         else:
             fname = tokens[1].strip()
+            functions.add(fname)
             offset = int(tokens[2].strip())
             val = int(tokens[3].strip())
             if fname not in trace["branches"].keys():
@@ -87,6 +88,9 @@ def preprocess_traces(traces, functions):
         trace_array = [BranchType.UNUSED] * i
         for function, branches in trace["branches"].items():
             for offset, val in branches.items():
+                if val > 2:
+                    trace_array[function_indices[function][0] + offset] = BranchType.UNKNOWN
+                    continue
                 trace_array[function_indices[function][0] + offset] = BranchType(val)
         processed_traces.append(Trace(trace["command"], trace_array))
 
