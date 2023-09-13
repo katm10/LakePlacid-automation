@@ -52,6 +52,7 @@ def main():
         dag.set_compiler(
             "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/clang"
         )
+
         dag.insert(
             Insertion(
               stage=GCCStage.COMPILE,

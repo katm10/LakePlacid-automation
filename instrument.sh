@@ -5,8 +5,10 @@ make_compilationinfo=false
 apps=()
 src=''
 
-while getopts "npmo:" flag; do
+while getopts "stnpmo:" flag; do
   case "${flag}" in
+    s) flags+=' -s';;
+    t) flags+=' -t';;
     n) flags+=' -n';;
     p) flags+=' -p';;
     m) make_compilationinfo=true;;
@@ -97,7 +99,7 @@ if [ $make_compilationinfo = true ]; then
 fi
 
 # using the build args, run the instrumentation
-python3 $LP_DIR/instrument.py ${apps[@]} -s $flags
+python3 $LP_DIR/instrument.py ${apps[@]} $flags
 
 echo "Done!"
 
