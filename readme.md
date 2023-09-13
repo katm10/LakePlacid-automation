@@ -48,7 +48,6 @@ mkdir traces
 ```
 This will generate a set of `tracexxxxxxxx.txt` within `traces/`.
 
-7. 
-* functions.txt comes from collecting all the functions out of manifest.txt
-* globals.txt comes from the "Accessed global <x>" that get printed while running patch-globals
-* missing.txt comes from whatever linker errors we get from trying to compile after linking in all the support stuff + globals.o and functions.o
+7. TODO: Generate `manifest.txt`
+
+8. Finally, to generate specialized code, run `bash instrument.sh -s ..`
