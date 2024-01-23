@@ -98,17 +98,17 @@ def main():
     function_indices, traces = read_trace_dir(sys.argv[1])
     trace_types = bucket_traces(traces)
 
-    chosen_dp = get_metrics(get_traces_dp, trace_types)
+    chosen_dp = get_traces_dp(trace_types)
     print_manifest(chosen_dp, trace_types, function_indices)
 
-    chosen_simple = get_metrics(get_traces_greedy, trace_types)
-    print_manifest(chosen_simple, trace_types, function_indices)
+    # chosen_simple = get_metrics(get_traces_greedy, trace_types)
+    # print_manifest(chosen_simple, trace_types, function_indices)
 
-    chosen_brute = get_metrics(brute_force.get_traces, trace_types)
-    print_manifest(chosen_brute, trace_types, function_indices)
+    # chosen_brute = get_metrics(brute_force.get_traces, trace_types)
+    # print_manifest(chosen_brute, trace_types, function_indices)
 
-    chosen_greedy = get_metrics(greedy.get_traces, trace_types)
-    print_manifest(chosen_greedy, trace_types, function_indices)
+    # chosen_greedy = get_metrics(greedy.get_traces, trace_types)
+    # print_manifest(chosen_greedy, trace_types, function_indices)
 
 
 if __name__ == "__main__":

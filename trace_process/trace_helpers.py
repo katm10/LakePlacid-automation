@@ -27,7 +27,7 @@ class TraceType:
         return f"command: {self.command}, count: {self.count}"
 
 
-def read_trace_dir(dirname):
+def read_trace_dir(dirname, preprocess=True):
     traces = []
     functions = set()
     for fname in os.listdir(dirname):
@@ -36,7 +36,10 @@ def read_trace_dir(dirname):
             trace, functions = read_trace(fname, functions)
             traces.append(trace)
 
-    return preprocess_traces(traces, functions)
+    if preprocess:
+        return preprocess_traces(traces, functions)
+    else:
+        return traces, functions
 
 
 def read_trace(fname, functions=set()):
