@@ -108,6 +108,9 @@ class CompilationInfo:
     @staticmethod
     def construct(command: str) -> "CompilationInfo":
         path, compiler, *argv = command.split(" ")
+
+        
+
         rel_dir = os.path.normpath(os.path.relpath(path, ROOT_DIR))
 
         compilation_info = CompilationInfo(

@@ -2,6 +2,16 @@ from enum import Enum
 from typing import Tuple
 from dataclasses import dataclass
 
+CommandType = Enum(
+    "CommandType",
+    [
+        "CC",
+        "LD",
+        "AS", 
+        "AR",
+    ]
+)
+
 GCCStage = Enum(
     "GCCStage",
     [
@@ -14,7 +24,11 @@ GCCStage = Enum(
         "UNUSED",
     ],
 )
-InputType = Enum("InputType", ["FILE", "DIR", "OTHER", "NONE"])
+
+InputType = Enum(
+    "InputType", 
+    ["FILE", "DIR", "OTHER", "NONE"]
+)
 
 
 @dataclass
@@ -101,6 +115,42 @@ GCCOptionInfos = [
     GCCOptionInfo("specs", False, True, " ", InputType.NONE, GCCStage.UNSPECIFIED),
 ]
 
+LDOptionInfos = [
+    GCCOptionInfo("o", False, True, " ", InputType.FILE, GCCStage.LINK),
+    GCCOptionInfo("output", True, True, "=", InputType.FILE, GCCStage.LINK),
+    GCCOptionInfo("a", False, True, "", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("A", False, True, "", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("architecture", True, True, "=", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("b", False, True, " ", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("L", False, True, "", InputType.DIR, GCCStage.LINK),
+    GCCOptionInfo("format", True, True, "=", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("b", False, True, " ", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("c", False, True, " ", InputType.FILE, GCCStage.LINK),
+    GCCOptionInfo("mri-script", True, True, "=", InputType.FILE, GCCStage.LINK),
+    GCCOptionInfo("d", False, False, "", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("e", True, True, " ", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("E", False, False, "", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("export-dynamic", True, False, "", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("f", False, False, "", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("auxiliary", True, True, " ", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("F", False, True, " ", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("filter", True, True, " ", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("force-exe-suffix", True, False, "", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("g", False, False, "", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("gpsize", True, True, "=", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("h", False, True, "", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("soname", False, True, "=", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("i", False, False, "", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("library", True, True, "=", InputType.NONE, GCCStage.LINK),
+    GCCOptionInfo("l", False, True, "", InputType.FILE, GCCStage.LINK)
+]
+
+ASOptionInfos = [
+    GCCOptionInfo("o", False, True, " ", InputType.FILE, GCCStage.LINK)
+]
+
+AROptionInfos = []
+    
 
 @dataclass
 class GCCOption:
@@ -119,14 +169,26 @@ class GCCOption:
         }
 
     @staticmethod
-    def find_matching_arg(option: str, double_dash: bool) -> GCCOptionInfo:
-        for info in GCCOptionInfos:
+    def find_matching_arg(option: str, double_dash: bool, command_type: CommandType) -> GCCOptionInfo:
+        infos = GCCOption.get_options_for_command(command_type)
+        for info in infos:
             if info.double_dash == double_dash and option.startswith(info.option):
                 return info
         return None
+    
+    @staticmethod
+    def get_options_for_command(command_type):
+        if command_type == CommandType.CC:
+            return GCCOptionInfos
+        elif command_type == CommandType.LD:
+            return LDOptionInfos
+        elif command_type == CommandType.AS:
+            return ASOptionInfos
+        elif command_type == CommandType.AR:
+            return AROptionInfos
 
     @staticmethod
-    def construct(option: str, indx: int, args: list) -> Tuple["GCCOption", int]:
+    def construct(option: str, indx: int, args: list, command_type: CommandType) -> Tuple["GCCOption", int]:
         double_dash = False
         if option.startswith("--"):
             flag = option[2:]
@@ -135,7 +197,7 @@ class GCCOption:
             flag = option[1:]
 
         arg = None
-        option_info = GCCOption.find_matching_arg(flag, double_dash)
+        option_info = GCCOption.find_matching_arg(flag, double_dash, command_type)
         if option_info is None:
             return (
                 GCCOption(GCCStage.UNSPECIFIED, option, None, InputType.NONE, ""),

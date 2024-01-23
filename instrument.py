@@ -1,7 +1,7 @@
 import argparse
 import json
 from build_info import BuildInfoDAG, CompilationInfo, Insertion
-from bin.paths import *
+from impo import *
 from gcc_options import GCCStage
 import os
 
