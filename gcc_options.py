@@ -9,6 +9,7 @@ GCCStage = Enum(
         "COMPILE",
         "ASSEMBLE",
         "LINK",
+        "POST",
         "INSTRUMENT",
         "UNSPECIFIED",
         "UNUSED",

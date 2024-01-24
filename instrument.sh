@@ -5,12 +5,13 @@ make_compilationinfo=false
 apps=()
 src=''
 
-while getopts "stnpmo:" flag; do
+while getopts "stnpmro:" flag; do
   case "${flag}" in
     s) flags+=' -s';;
     t) flags+=' -t';;
     n) flags+=' -n';;
     p) flags+=' -p';;
+    r) flags+=' -r';;
     m) make_compilationinfo=true;;
     o) apps+=("${OPTARG}");;
     *) exit 1;;
@@ -45,10 +46,11 @@ fi
 
 # define the paths to the instrumentation files
 export ROOT_DIR=$(realpath $src)
+export AUTO_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 export LP_DIR=$ROOT_DIR/instrumentation
 export JSON_PATH=$LP_DIR/compilation_info.json
 export TXT_PATH=$LP_DIR/compilation_commands.txt
-export BIN=$LP_DIR/bin
+export BIN=$AUTO_DIR/bin
 
 # clean up previous instrumentation
 rm -rf $LP_DIR/scouting/
@@ -56,13 +58,13 @@ rm -rf $LP_DIR/modified/
 rm -rf $LP_DIR/bin/
 
 # Provide the correct paths to the python files and generate dropins for the C compilers
-mkdir $BIN
+mkdir -p $BIN
 test -f $BIN/paths.py || touch $BIN/paths.py
-for path in ROOT_DIR LP_DIR JSON_PATH TXT_PATH BIN; do
+for path in AUTO_DIR ROOT_DIR LP_DIR JSON_PATH TXT_PATH BIN; do
   echo "${path}=\"${!path}\".strip().rstrip('/')" >> $BIN/paths.py
 done
 
-mkdir $BIN/dropins
+mkdir -p $BIN/dropins
 for compiler in gcc cc clang tcc; do
   original=$(which $compiler)
   if [ -z "$original" ]; then
@@ -70,8 +72,8 @@ for compiler in gcc cc clang tcc; do
     continue
   fi
   test -f $BIN/dropins/$compiler || touch $BIN/dropins/$compiler
-  sed -e s?\$\{COMPILER\}?$compiler?g -e s?\$\{ORIGINAL\}?${original}?g  ${LP_DIR}/dropin_template > ${LP_DIR}/bin/dropins/$compiler
-  chmod +x ${LP_DIR}/bin/dropins/$compiler
+  sed -e s?\$\{COMPILER\}?$compiler?g -e s?\$\{ORIGINAL\}?${original}?g  ${AUTO_DIR}/dropin_template > ${AUTO_DIR}/bin/dropins/$compiler
+  chmod +x $BIN/dropins/$compiler
 done
 
 
@@ -99,7 +101,7 @@ if [ $make_compilationinfo = true ]; then
 fi
 
 # using the build args, run the instrumentation
-python3 $LP_DIR/instrument.py ${apps[@]} $flags
+python3 $AUTO_DIR/instrument.py ${apps[@]} $flags
 
 echo "Done!"
 

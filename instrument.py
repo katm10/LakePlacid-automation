@@ -4,6 +4,7 @@ from build_info import BuildInfoDAG, CompilationInfo, Insertion
 from bin.paths import *
 from gcc_options import GCCStage
 import os
+import subprocess
 
 
 def gen_compilation_info_json():
@@ -34,6 +35,7 @@ def main():
     parser.add_argument("-t", "--extract-trace", action="store_true")
     parser.add_argument("-s", "--specialize", action="store_true")
     parser.add_argument("-p", "--print-only", action="store_true")
+    parser.add_argument("-r", "--osr", action="store_true")
     args = parser.parse_args()
 
     # Convert the compilation calls to arg objects
@@ -64,8 +66,51 @@ def main():
         dag.add_args(GCCStage.ASSEMBLE, "-Wno-constant-logical-operand -fPIC")
         dag.add_args(GCCStage.LINK, "-lpthread -levent")
         dag.add_inputs(
-            GCCStage.LINK, [os.path.join(LP_DIR, "support", "trace_support.c")]
+            GCCStage.LINK, [os.path.join(AUTO_DIR, "support", "trace_support.c")]
         )
+    elif args.osr:
+        # build a simple "fast" and "slow" version without any optimizations yet
+        # for now, assume fast_table, slow_table, functions.txt, pairs.txt files have already been generated
+
+        slow_dag = BuildInfoDAG.construct_from_json(
+            os.path.join(LP_DIR, "osr"), args.applications
+        )
+
+        # patch functions
+        slow_dag.insert(
+            Insertion(
+                GCCStage.COMPILE,
+                "~/llvm-build/bin/patch-functions $SOURCE $INPUT --user-version --",
+                "patch-functions",
+                []
+            )
+        )
+
+        # do the wacky MIR things
+        # ref: ~/llvm-build/bin/clang -g -mllvm "--function-table-fname" -mllvm "testdir/functions.txt" -mllvm "--context-id" -mllvm 0 -mllvm "--return-addr-translation" -mllvm 2 -c testdir/test-fast.c -o testdir/test-fast.o
+        slow_dag.set_compiler("~/llvm-build/bin/clang")
+        slow_dag.add_args(GCCStage.COMPILE, "-g -mllvm --function-table-fname -mllvm testdir/functions.txt -mllvm --context-id -mllvm 0 -mllvm --return-addr-translation -mllvm 2")
+
+        # rename slow symbols
+        # ref: awk '{ print $0, $0 "_slow" }' testdir/functions.txt > testdir/pairs.txt
+        # objcopy testdir/test-slow.o --redefine-syms testdir/pairs.txt 
+
+        with open("function_pairs.txt", "w") as f:
+            subprocess.run(["awk", "{ print $0, $0 \"_slow\" }", "functions.txt"], stdout=f)
+
+        # rename the symbols in the obj file
+        slow_dag.insert(
+            Insertion(
+                GCCStage.POST,
+                "objcopy $SOURCE --redefine-syms function_pairs.txt",
+                "rename-symbols",
+                []
+            )
+        )
+        
+        # generate the fast dag
+
+        dag = slow_dag
     elif args.specialize:
 
         # grab the functions out of the manifest TODO: I could just generate both of these at once? 
@@ -107,7 +152,7 @@ def main():
         dag.add_inputs(
             GCCStage.LINK,
             [
-                os.path.join(LP_DIR, "support", "mpns_support.c"),
+                os.path.join(AUTO_DIR, "support", "mpns_support.c"),
                 os.path.join(LP_DIR, "gen", "globals.o"),
                 os.path.join(LP_DIR, "gen", "local_table.o"),
                 os.path.join(LP_DIR, "gen", "missing.o")
