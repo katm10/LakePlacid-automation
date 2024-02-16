@@ -86,7 +86,7 @@ if [ $make_compilationinfo = true ]; then
 
   # our dropin replacements for C compilers and mv should be invoked on the first build
   OLD_PATH=$PATH
-  PATH="$LP_DIR/bin/dropins:$PATH"
+  PATH="$AUTO_DIR/bin/dropins:$PATH"
 
   if [ ${#apps[@]} -eq 0 ]; then
     make -C $ROOT_DIR

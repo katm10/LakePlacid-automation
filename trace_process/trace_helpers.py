@@ -92,7 +92,9 @@ def preprocess_traces(traces, functions):
         for function, branches in trace["branches"].items():
             for offset, val in branches.items():
                 if val > 2:
-                    trace_array[function_indices[function][0] + offset] = BranchType.UNKNOWN
+                    trace_array[
+                        function_indices[function][0] + offset
+                    ] = BranchType.UNKNOWN
                     continue
                 trace_array[function_indices[function][0] + offset] = BranchType(val)
         processed_traces.append(Trace(trace["command"], trace_array))

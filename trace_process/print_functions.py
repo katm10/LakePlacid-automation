@@ -28,6 +28,7 @@ def read_from_nm(nm_file, trace_dir):
     for f in sorted_functions:
         print(f[0])
 
+
 def compare_functions(file1, file2):
     with open(file1, "r") as f1:
         fxns1 = set(f1.readlines())
@@ -53,4 +54,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

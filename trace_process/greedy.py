@@ -1,7 +1,8 @@
 from trace_helpers import BranchType
 
+
 def count_unknowns(Z, T_j):
-    assert(len(Z) == len(T_j))
+    assert len(Z) == len(T_j)
     unknowns = 0
 
     for i in range(len(T_j)):
@@ -11,8 +12,9 @@ def count_unknowns(Z, T_j):
         elif Z[i] == BranchType.UNLIKELY:
             if T_j[i] == BranchType.LIKELY or T_j[i] == BranchType.UNKNOWN:
                 unknowns += 1
-    
+
     return unknowns
+
 
 def get_traces(trace_types, threshold=0.75):
     # Start with the most common trace type

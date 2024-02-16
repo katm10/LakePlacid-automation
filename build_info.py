@@ -5,8 +5,9 @@ from gcc_options import *
 import copy
 import subprocess
 from dataclasses import dataclass
-from typing import List, Dict, Set
+from typing import List, Dict, Callable
 from functools import reduce
+import graphviz
 
 """
 {
@@ -36,12 +37,17 @@ from functools import reduce
 
 stage_to_type = {
     GCCStage.PREPROCESS: ".c",
-    GCCStage.INSTRUMENT: ".c",
     GCCStage.COMPILE: ".s",
     GCCStage.ASSEMBLE: ".o",
     GCCStage.LINK: "",
 }
 
+stage_to_intype = {
+    GCCStage.PREPROCESS: ".c",
+    GCCStage.COMPILE: ".c",
+    GCCStage.ASSEMBLE: ".s",
+    GCCStage.LINK: ".o",
+}
 
 def get_stage_from_inputs(inputs):
     ext_to_stage = {
@@ -76,6 +82,7 @@ class Insertion:
     # stdout: str =
     # stderr: str
     inputs: List[str]
+    in_place: bool = False
 
 
 @dataclass
@@ -86,6 +93,7 @@ class CompilationInfo:
     compiler: str
     rel_dir: str
     stages: List[GCCStage]
+    extra_args: Dict[GCCStage, str]
 
     @staticmethod
     def empty_args():
@@ -103,6 +111,7 @@ class CompilationInfo:
             compiler=json_obj["compiler"],
             rel_dir=json_obj["rel_dir"],
             stages=[GCCStage[stage] for stage in json_obj["stages"]],
+            extra_args={},
         )
 
     @staticmethod
@@ -117,6 +126,7 @@ class CompilationInfo:
             compiler=compiler,
             rel_dir=rel_dir,
             stages=[],
+            extra_args={},
         )
 
         compilation_info.parse(argv)
@@ -162,7 +172,7 @@ class CompilationInfo:
             self.stages = [first_stage]
             return
 
-        if first_stage == GCCStage.UNSPECIFIED:
+        if first_stage == GCCStage.UNSPECIFIED or first_stage == GCCStage.INSTRUMENT:
             return
 
         stages = [
@@ -171,6 +181,7 @@ class CompilationInfo:
             GCCStage.ASSEMBLE,
             GCCStage.LINK,
         ]
+
         while stages[0] != first_stage:
             stages.pop(0)
         while stages[-1] != last_stage:
@@ -234,7 +245,7 @@ class CompilationInfo:
         return args
 
     def add_args(self, stage: GCCStage, args: List[GCCOption]):
-        self.args = {stage.name: args} # TODO: don't override
+        self.args = {stage.name: args}  # TODO: don't override
 
     def add_inputs(self, inputs: List[str]):
         self.inputs.extend(inputs)
@@ -249,6 +260,11 @@ class BuildInfoNode:
     compiler: str
     insertion: Insertion = None
     built: bool = False
+    append_str: str = ""
+
+    def __hash__(self):
+        # grab the inputs/output and just hash that string
+        return hash("".join([input.get_output_path() for input in self.inputs]) + self.get_output_path())
 
     def ready(self):
         for input in self.inputs:
@@ -258,21 +274,45 @@ class BuildInfoNode:
         return True
 
     def front(self):
-        front_node = self
-        while len(front_node.inputs) >= 1:
-            # This only really makes sense for a chain
-            assert len(front_node.inputs) == 1
+        front_node = self        
 
-            front_node = front_node.inputs[0]
+        if len(front_node.inputs) == 0:
+            return front_node
+        elif len(front_node.inputs) == 1:
+            return front_node.inputs[0].front()
+        else:
+            print("Warning: front node has multiple inputs, returning first one...")
+            return front_node.inputs[0].front()
+        
+    def end(self):
+        end_node = self
 
-        return front_node
+        if len(end_node.outputs) == 0:
+            return end_node
+        elif len(end_node.outputs) == 1:
+            return end_node.outputs[0].end()
+        else:
+            print("Warning: end node has multiple outputs, returning first one...")
+            return end_node.outputs[0].end()
 
     def get_source(self):
         front = self.front()
-        return os.path.abspath(os.path.join(ROOT_DIR, front.info.rel_dir, front.info.inputs[0]))
+        return os.path.abspath(
+            os.path.join(ROOT_DIR, front.info.rel_dir, front.info.inputs[0])
+        )
+    
+    def get_output(self):
+        if "." in self.info.output:
+            name, ext = self.info.output.split(".")
+            out = name + self.append_str + "." + ext
+        else:
+            out = self.info.output + self.append_str
+
+        return out
 
     def get_output_path(self):
-        path = os.path.join(self.new_dir, self.info.output)
+        out = self.get_output()
+        path = os.path.join(self.new_dir, out)
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
         return path
@@ -312,6 +352,8 @@ class BuildInfoNode:
             command.extend(["-c", inputs[0], "-o", self.get_output_path()])
 
         elif self.info.stages[-1] == GCCStage.LINK:
+            # TODO: hacked all this lmao
+            command = ["gcc"]
             assert len(inputs) > 0
             command.extend(["-o", self.get_output_path()])
             command.extend(inputs)
@@ -320,6 +362,8 @@ class BuildInfoNode:
             # Don't include flags when instrumenting
             for stage in self.info.stages:
                 command.extend(self.info.get_args_as_list(stage))
+                if stage in self.info.extra_args.keys():
+                    command.extend(self.info.extra_args[stage].split(" "))
             command.extend(self.info.get_args_as_list(GCCStage.UNSPECIFIED))
 
         return command
@@ -330,8 +374,11 @@ class BuildInfoNode:
                 subprocess.run(command, stdout=f)
 
         elif self.info.stages[-1] == GCCStage.INSTRUMENT:
-            with open(self.get_output_path(), "w") as f:
-                subprocess.run(command, stdout=f)
+            if not self.insertion.in_place:
+                with open(self.get_output_path(), "w") as f:
+                    subprocess.run(command, stdout=f)
+            else:
+                subprocess.run(command)
 
         elif self.info.stages[-1] == GCCStage.COMPILE:
             subprocess.run(command)
@@ -351,7 +398,7 @@ class BuildInfoNode:
 
         self.built = True
         command = self.build_command()
-        print(" ".join(command))
+        print(" ".join(command) + " > " + self.get_output_path())
         if not print_only:
             self.run_command(command)
 
@@ -376,6 +423,7 @@ class BuildInfoNode:
             output=self.info.output,
             stages=back_info_stages,
             rel_dir=self.info.rel_dir,
+            extra_args={},
         )
 
         front_info = CompilationInfo(
@@ -385,10 +433,18 @@ class BuildInfoNode:
             output=front_info_output,
             stages=front_info_stages,
             rel_dir=self.info.rel_dir,
+            extra_args={},
         )
 
         back = BuildInfoNode(
-            back_info, [self], copy.copy(self.outputs), os.path.join(self.new_dir), self.compiler
+            info=back_info,
+            inputs=[self],
+            outputs=copy.copy(self.outputs),
+            new_dir=os.path.join(self.new_dir),
+            compiler=self.compiler,
+            insertion=None,
+            built=False,
+            append_str=self.append_str,
         )
 
         self.info = front_info
@@ -422,6 +478,7 @@ class BuildInfoDAG:
     output_dir: str
     extra_args: Dict[GCCStage, List[str]]
     extra_inputs: Dict[GCCStage, List[str]]
+    appended_str: str = ""
     # remove_args: Dict[GCCStage, bool] = {}
 
     @staticmethod
@@ -491,10 +548,10 @@ class BuildInfoDAG:
 
                 if input not in self.compilation_dict.keys():
                     # This is a file we need to grab from the cache, so it is a leaf in the DAG
-                    self.leaves[parent.info.output] = parent
+                    self.leaves[parent.get_output_path()] = parent
                 else:
                     # If we previously thought this was a leaf but it has a node child, remove it from leaves
-                    self.leaves.pop(parent.info.output, None)
+                    self.leaves.pop(parent.get_output_path(), None)
 
                     child = BuildInfoNode(
                         self.compilation_dict[input],
@@ -512,9 +569,17 @@ class BuildInfoDAG:
 
     def build(self, print_only=False):
         self.build_dag()
+        self.apply_output_names()
         self.apply_insertions()
         self.apply_extra_args()
         self.apply_extra_inputs()
+
+        # DELETE ME
+        self.display_dag("in_place")
+
+        self.apply_link()
+
+        self.display_dag("linked")
 
         visited = []
         frontier = [leaf for _, leaf in self.leaves.items() if leaf.ready()]
@@ -539,10 +604,22 @@ class BuildInfoDAG:
             self.apply_insertion(insertion)
 
     def apply_insertion(self, insertion: Insertion):
-        nodes = [leaf for _, leaf in self.leaves.items()]
+        # TODO: should I just redesign... again?
+        # TODO: dealing with in-place...
+        # stupid solution -- grab the end()
+
+        # oml so dumb
+        nodes = [list(self.leaves.values())[0].end()]
+
         while len(nodes) > 0:
             node = nodes.pop()
             if insertion.stage in node.info.stages:
+                '''
+                PREPROCESS/COMPILE/ASSEMBLE -> LINK
+                PREPROCESS -> INSTRUMENT -> COMPILE/ASSEMBLE -> LINK
+                
+                '''
+
                 if node.info.stages[0] != insertion.stage:
                     # Split node first
                     node = node.split(insertion.stage)
@@ -553,40 +630,52 @@ class BuildInfoDAG:
                 # - output
                 # - inputs
 
-                file, _ = os.path.splitext(node.info.output)
-                replaced_command = copy.copy(insertion.command)
+                new_inputs = []
+                new_inputs_strs = []
+                for input in node.inputs:
+                    file, _ = os.path.splitext(input.info.output)
+                    replaced_command = copy.copy(insertion.command)
+                    for i, external_input in enumerate(insertion.inputs):
+                        replaced_command = replaced_command.replace(f"${i+1}", external_input)
 
-                for i, input in enumerate(insertion.inputs):
-                    replaced_command = replaced_command.replace(f"${i+1}", input)
+                    replaced_command = replaced_command.replace(
+                        "$SOURCE", input.get_source()
+                    ).replace("$INPUT", input.get_output_path())
 
-                replaced_command = replaced_command.replace("$SOURCE", node.get_source()) \
-                                                   .replace("$INPUT",
-                                                           node.inputs[0].get_output_path())
+                    replaced_insertion = copy.copy(insertion)
+                    replaced_insertion.command = replaced_command
 
-                replaced_insertion = copy.copy(insertion)
-                replaced_insertion.command = replaced_command
+                    instrumented_info = CompilationInfo.construct(replaced_command)
+                    instrumented_info.stages = [GCCStage.INSTRUMENT]
 
-                info = CompilationInfo.construct(replaced_command)
-                info.output = os.path.join(insertion.name, file + ".c")
-                info.stages = [GCCStage.INSTRUMENT]
-                inputs = copy.copy(node.inputs)
-                del node.inputs
+                    if insertion.in_place:
+                        instrumented_info.output = input.info.output
+                        output_dir = input.new_dir
+                    else:
+                        # Output is a modified version of `input`'s output
+                        instrumented_info.output = os.path.join(insertion.name, file + stage_to_intype[insertion.stage])
+                        output_dir = os.path.join(self.output_dir, instrumented_info.stages[-1].name)
+                        
+                    instrument_node = BuildInfoNode(
+                        info=instrumented_info,
+                        inputs=[input],
+                        outputs=[node],
+                        new_dir=output_dir,
+                        compiler=instrumented_info.compiler,
+                        insertion=replaced_insertion,
+                        append_str=self.appended_str,
+                    )
 
-                instrument_node = BuildInfoNode(
-                    info,
-                    inputs,
-                    [node],
-                    os.path.join(self.output_dir, info.stages[-1].name),
-                    info.compiler,
-                    replaced_insertion
-                )
-                node.inputs = [instrument_node]
-                node.info.inputs = [info.output]
+                    new_inputs.append(instrument_node)
+                    new_inputs_strs.append(instrumented_info.output)
 
-                for input in instrument_node.inputs:
-                    input.outputs = [instrument_node]
+                    for input in instrument_node.inputs:
+                        input.outputs = [instrument_node]
+
+                node.info.inputs = new_inputs_strs
+                node.inputs = new_inputs
             else:
-                nodes.extend(node.outputs)
+                nodes.extend(node.inputs)
         pass
 
     def add_args(self, stage: GCCStage, args: str):
@@ -597,6 +686,14 @@ class BuildInfoDAG:
             self.apply_extra_arg(stage, args)
 
     def apply_extra_arg(self, stage: GCCStage, args: str):
+        # Add to info.extra_args for each relevant node
+        def augment(node):
+            node.info.extra_args[stage] = args
+            return node
+
+        self.modify_tree(augment)
+        return
+
         # Convert args str to GCCOptions
         indx = 0
         options = []
@@ -642,16 +739,16 @@ class BuildInfoDAG:
             self.apply_extra_input(stage, inputs)
 
     def apply_extra_input(self, stage: GCCStage, inputs: List[str]):
-        visited = []
+        visited = set()
         frontier = [leaf for _, leaf in self.leaves.items()]
 
         while len(frontier) > 0:
             next_frontier = []
             for node in frontier:
-                if node.get_output_path() in visited:
+                if hash(node) in visited:
                     continue
 
-                visited.append(node.get_output_path())
+                visited.add(hash(node))
                 if stage in node.info.stages:
                     node.add_inputs(inputs)
                 else:
@@ -672,3 +769,135 @@ class BuildInfoDAG:
                 self.compilation_dict[rel_dst] = value
                 del self.compilation_dict[key]
                 break
+
+    def modify_tree(self, function: Callable[[BuildInfoNode], BuildInfoNode]):
+        # Go through tree and apply function to all nodes
+        visited = set()
+        frontier = [leaf for _, leaf in self.leaves.items()]
+
+        while len(frontier) > 0:
+            next_frontier = []
+            for node in frontier:
+                if node.get_output_path() in visited:
+                    continue
+
+                visited.add(hash(node))
+
+                node = function(node)
+
+                for output in node.outputs:
+                    if output.get_output_path() not in visited:
+                        next_frontier.append(output)
+
+            frontier = next_frontier
+
+    def find_in_tree(self, function: Callable[[BuildInfoNode], bool]):
+        # Go through tree and apply function to all nodes
+        visited = set()
+        frontier = [leaf for _, leaf in self.leaves.items()]
+
+        while len(frontier) > 0:
+            next_frontier = []
+            for node in frontier:
+                if hash(node) in visited:
+                    continue
+
+                visited.add(hash(node))
+
+                if function(node):
+                    return node
+
+                for output in node.outputs:
+                    if output.get_output_path() not in visited:
+                        next_frontier.append(output)
+
+            frontier = next_frontier
+
+        return None
+
+    def apply_output_names(self):
+        def augment(node):
+            node.append_str = self.appended_str
+            return node
+
+        self.modify_tree(augment)
+
+        # Fix the leaf names
+        new_leaves = {}
+        for key, value in self.leaves.items():
+            new_leaves[value.get_output_path()] = value
+
+        self.leaves = new_leaves
+
+    def augment_output_names(self, append_str):
+        self.appended_str = append_str
+
+    def apply_link(self):
+        # Goal: just add a final node to link two existing objects
+        # combined_dag = self
+        # combined_dag.compilation_dict.update(other.compilation_dict)
+        # combined_dag.applications.extend(other.applications)
+        # combined_dag.leaves.update(other.leaves)
+
+        # Assumption: both self and other each only have one link node, and it is already only one stage (no splitting needed)
+
+        if not hasattr(self, "linked_dag"):
+            return
+
+        self.linked_dag.build_dag()
+        self.linked_dag.apply_output_names()
+        self.linked_dag.apply_insertions()
+        self.linked_dag.apply_extra_args()
+        self.linked_dag.apply_extra_inputs()
+
+        # Find each link node, collect all the inputs, and then create a new link node
+        self_link = self.find_in_tree(
+            lambda node: node.info.stages[-1] == GCCStage.LINK
+        )
+        other_link = self.linked_dag.find_in_tree(
+            lambda node: node.info.stages[-1] == GCCStage.LINK
+        )
+
+        self.display_dag("self")
+        self.linked_dag.display_dag("other")
+
+        assert self_link is not None
+        assert other_link is not None
+
+        for input in other_link.inputs:
+            if input not in self_link.inputs:
+                self_link.inputs.append(input)
+                input.outputs.append(self_link)
+                input.outputs.remove(other_link)
+
+        self_link.info.inputs.extend(other_link.info.inputs)
+
+        # Combine the leaves
+        self.leaves.update(self.linked_dag.leaves)
+
+    def link(self, other):
+        self.linked_dag = other
+
+    def display_dag(self, file_name):
+        graph = graphviz.Digraph()
+        graph.graph_attr["rankdir"] = "LR"
+
+        def print_node(node):
+            # Make graph node
+            graph.node(node.get_output_path(), label=f"{node.get_output()}\n{', '.join([stage.name for stage in node.info.stages])}", shape="box")
+
+            ## Add edges
+
+            # # Inputs (in blue)
+            # for input in node.inputs:
+            #     graph.edge(node.get_output_path(), input.get_output_path(), color="blue")
+
+            # Outputs (in green)
+            for output in node.outputs:
+                graph.edge(node.get_output_path(), output.get_output_path(), color="green")
+
+            return node
+
+        self.modify_tree(print_node)
+
+        graph.render(file_name)

@@ -59,11 +59,13 @@ def get_metrics(manifest_function, trace_types, threshold_p=0.75):
     print(f"Percent satisfied: {satisfied / trace_length * 100}")
 
     print(
-        "Branch counts:\nlikely:{}\nunlikely:{}\nunknown:{}"
-          .format(result_trace.count(BranchType.LIKELY),
-                  result_trace.count(BranchType.UNLIKELY),
-                  result_trace.count(BranchType.UNKNOWN)))
-    
+        "Branch counts:\nlikely:{}\nunlikely:{}\nunknown:{}".format(
+            result_trace.count(BranchType.LIKELY),
+            result_trace.count(BranchType.UNLIKELY),
+            result_trace.count(BranchType.UNKNOWN),
+        )
+    )
+
     print("Resulting manifest:")
 
     return chosen_traces

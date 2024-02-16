@@ -2,7 +2,6 @@ import itertools
 from trace_helpers import *
 
 
-
 def get_traces(trace_types, threshold=0.75):
     types = list(range(len(trace_types)))
 

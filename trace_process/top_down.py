@@ -21,7 +21,11 @@ def get_traces_dp(types, threshold=0.75):
     trace_types = types
 
     trace_length = sum(trace_type.count for trace_type in trace_types)
-    _, chosen = A(round(trace_length * threshold), len(trace_types) - 1, [BranchType.UNUSED] * len(trace_types[0].trace))
+    _, chosen = A(
+        round(trace_length * threshold),
+        len(trace_types) - 1,
+        [BranchType.UNUSED] * len(trace_types[0].trace),
+    )
 
     return chosen
 
@@ -32,7 +36,7 @@ See how many unknowns are added by combining Z and T_j
 
 
 def f(Z, T_j):
-    assert(len(Z) == len(T_j))
+    assert len(Z) == len(T_j)
     Z = Z.copy()
     unknowns = 0
 
@@ -49,7 +53,7 @@ def f(Z, T_j):
             if T_j[i] == BranchType.LIKELY or T_j[i] == BranchType.UNKNOWN:
                 unknowns += 1
                 Z[i] = BranchType.UNKNOWN
-    
+
     return Z, unknowns
 
 

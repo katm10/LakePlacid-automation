@@ -9,7 +9,6 @@ GCCStage = Enum(
         "COMPILE",
         "ASSEMBLE",
         "LINK",
-        "POST",
         "INSTRUMENT",
         "UNSPECIFIED",
         "UNUSED",
@@ -76,7 +75,7 @@ GCCOptionInfos = [
     GCCOptionInfo(
         "pedantic-errors", False, False, "", InputType.NONE, GCCStage.COMPILE
     ),
-    GCCOptionInfo("W", False, True, "", InputType.NONE, GCCStage.COMPILE),
+    GCCOptionInfo("W", False, True, "", InputType.NONE, GCCStage.UNUSED),
     # Optimization
     GCCOptionInfo("O", False, True, "", InputType.NONE, GCCStage.COMPILE),
     GCCOptionInfo("Os", False, False, "", InputType.NONE, GCCStage.COMPILE),

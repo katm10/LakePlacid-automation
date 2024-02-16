@@ -57,10 +57,10 @@ def main():
 
         dag.insert(
             Insertion(
-              stage=GCCStage.COMPILE,
-              command="/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace $SOURCE $INPUT --",
-              name="extract-trace",
-              inputs=[]
+                stage=GCCStage.COMPILE,
+                command="/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/extract-trace $SOURCE $INPUT --",
+                name="extract-trace",
+                inputs=[],
             )
         )
         dag.add_args(GCCStage.ASSEMBLE, "-Wno-constant-logical-operand -fPIC")
@@ -70,51 +70,116 @@ def main():
         )
     elif args.osr:
         # build a simple "fast" and "slow" version without any optimizations yet
-        # for now, assume fast_table, slow_table, functions.txt, pairs.txt files have already been generated
+        # for now, assume fast_table, slow_table, functions.txt files have already been generated
+        functions_file = os.path.join(LP_DIR, "function_names.txt")
+        pairs_file = os.path.join(LP_DIR, "function_pairs.txt")
+        with open(pairs_file, "w") as f:
+            command = f"awk '{{ print $0, $0 \"_slow\" }}' {functions_file}"
+            print(command)
+            subprocess.run(["awk", "{ print $0, $0 \"_slow\" }", functions_file], stdout=f)
 
         slow_dag = BuildInfoDAG.construct_from_json(
             os.path.join(LP_DIR, "osr"), args.applications
         )
 
+        # TODO: we don't actually need to do this at the moment
+        # patch globals
+        # slow_dag.insert(
+        #     Insertion(
+        #         GCCStage.COMPILE,
+        #         "/home/kmohr/llvm-build/bin/patch-globals $SOURCE $INPUT --",
+        #         "patch-globals",
+        #         [],
+        #     )
+        # )
+
         # patch functions
         slow_dag.insert(
             Insertion(
                 GCCStage.COMPILE,
-                "~/llvm-build/bin/patch-functions $SOURCE $INPUT --user-version --",
+                "/home/kmohr/llvm-build/bin/patch-functions $SOURCE $INPUT --user-version --",
                 "patch-functions",
-                []
+                [],
             )
         )
 
         # do the wacky MIR things
-        # ref: ~/llvm-build/bin/clang -g -mllvm "--function-table-fname" -mllvm "testdir/functions.txt" -mllvm "--context-id" -mllvm 0 -mllvm "--return-addr-translation" -mllvm 2 -c testdir/test-fast.c -o testdir/test-fast.o
-        slow_dag.set_compiler("~/llvm-build/bin/clang")
-        slow_dag.add_args(GCCStage.COMPILE, "-g -mllvm --function-table-fname -mllvm testdir/functions.txt -mllvm --context-id -mllvm 0 -mllvm --return-addr-translation -mllvm 2")
+        # ref: /home/kmohr/llvm-build/bin/clang -g -mllvm "--function-table-fname" -mllvm "testdir/functions.txt" -mllvm "--context-id" -mllvm 0 -mllvm "--return-addr-translation" -mllvm 2 -c testdir/test-fast.c -o testdir/test-fast.o
+        slow_dag.set_compiler("/home/kmohr/llvm-build/bin/clang")
+        slow_dag.add_args(
+            GCCStage.COMPILE,
+            f"-g -mllvm --function-table-fname -mllvm {functions_file} -mllvm --context-id -mllvm 1 -mllvm --return-addr-translation -mllvm 1",
+        )
 
         # rename slow symbols
         # ref: awk '{ print $0, $0 "_slow" }' testdir/functions.txt > testdir/pairs.txt
-        # objcopy testdir/test-slow.o --redefine-syms testdir/pairs.txt 
-
-        with open("function_pairs.txt", "w") as f:
-            subprocess.run(["awk", "{ print $0, $0 \"_slow\" }", "functions.txt"], stdout=f)
-
-        # rename the symbols in the obj file
+        # objcopy testdir/test-slow.o --redefine-syms testdir/pairs.txt
         slow_dag.insert(
             Insertion(
-                GCCStage.POST,
-                "objcopy $SOURCE --redefine-syms function_pairs.txt",
+                GCCStage.LINK,
+                "objcopy $INPUT --redefine-syms $1",
                 "rename-symbols",
-                []
+                [pairs_file],
+                in_place=True,
             )
         )
-        
+
         # generate the fast dag
+        fast_dag = BuildInfoDAG.construct_from_json(
+            os.path.join(LP_DIR, "osr"), args.applications
+        )
+
+        # once again TODO: we don't actually need to do this at the moment
+        # patch globals
+        # fast_dag.insert(
+        #     Insertion(
+        #         GCCStage.COMPILE,
+        #         "/home/kmohr/llvm-build/bin/patch-globals $SOURCE $INPUT --",
+        #         "patch-globals",
+        #         [],
+        #     )
+        # )
+
+        # patch functions
+        fast_dag.insert(
+            Insertion(
+                GCCStage.COMPILE,
+                "/home/kmohr/llvm-build/bin/patch-functions $SOURCE $INPUT --",
+                "patch-functions",
+                [],
+            )
+        )
+
+        # do the wacky MIR things
+        # ref: /home/kmohr/llvm-build/bin/clang -g -mllvm "--function-table-fname" -mllvm "testdir/functions.txt" -mllvm "--context-id" -mllvm 0 -mllvm "--return-addr-translation" -mllvm 2 -c testdir/test-fast.c -o testdir/test-fast.o
+        fast_dag.set_compiler("/home/kmohr/llvm-build/bin/clang")
+        fast_dag.add_args(
+            GCCStage.COMPILE,
+            f"-g -mllvm --function-table-fname -mllvm {functions_file} -mllvm --context-id -mllvm 0 -mllvm --return-addr-translation -mllvm 2",
+        )
+
+        slow_dag.augment_output_names("_slow")
+        
+        # add in the slow table, fast table, and helpers
+        slow_dag.add_inputs(
+            GCCStage.LINK,
+            [
+                os.path.join(LP_DIR, "slow_table.o"),
+                os.path.join(LP_DIR, "fast_table.o"),
+                # os.path.join(LP_DIR, "globals.o"),
+                # os.path.join(LP_DIR, "globals_user.o"),
+                os.path.join(AUTO_DIR, "support", "helper.c"),
+                os.path.join(AUTO_DIR, "support", "helper.s"),
+            ]  
+        )
+
+        # have a million *.o and *_slow.o files, now link them together
+        slow_dag.link(fast_dag)
 
         dag = slow_dag
+
     elif args.specialize:
-
-        # grab the functions out of the manifest TODO: I could just generate both of these at once? 
-
+        # grab the functions out of the manifest TODO: I could just generate both of these at once?
 
         dag = BuildInfoDAG.construct_from_json(
             os.path.join(LP_DIR, "specialized"), args.applications
@@ -126,9 +191,9 @@ def main():
         dag.insert(
             Insertion(
                 GCCStage.COMPILE,
-                '/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/apply-manifest $SOURCE $1 $INPUT --',
+                "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/apply-manifest $SOURCE $1 $INPUT --",
                 "apply-manifest",
-                ["manifest.txt"]
+                ["manifest.txt"],
             )
         )
         dag.insert(
@@ -136,7 +201,7 @@ def main():
                 GCCStage.COMPILE,
                 "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/patch-globals $SOURCE $INPUT --",
                 "patch-globals",
-                []
+                [],
             )
         )
         dag.insert(
@@ -144,7 +209,7 @@ def main():
                 GCCStage.COMPILE,
                 "/data/commit/graphit/ajaybr/scratch/mpns_clang/build/bin/patch-functions $SOURCE $INPUT --",
                 "patch-functions",
-                []
+                [],
             )
         )
 
@@ -155,7 +220,7 @@ def main():
                 os.path.join(AUTO_DIR, "support", "mpns_support.c"),
                 os.path.join(LP_DIR, "gen", "globals.o"),
                 os.path.join(LP_DIR, "gen", "local_table.o"),
-                os.path.join(LP_DIR, "gen", "missing.o")
+                os.path.join(LP_DIR, "gen", "missing.o"),
             ],
         )
     else:
